@@ -1,32 +1,115 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# ======================
+# Go
+# ======================
+
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
+*.a
 
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
+
 coverage.*
 *.coverprofile
-profile.cov
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# ======================
+# Build
+# ======================
 
-# Go workspace file
-go.work
-go.work.sum
+bin/
+build/
+dist/
+release/
 
-# env file
+# ======================
+# Environment
+# ======================
+
 .env
+.env.*
+*.local
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# ======================
+# Database
+# ======================
+
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ======================
+# Logs
+# ======================
+
+*.log
+logs/
+
+# ======================
+# VS Code
+# ======================
+
+.vscode/
+
+# ======================
+# macOS
+# ======================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+._*
+.Spotlight-V100
+.Trashes
+
+# ======================
+# Linux
+# ======================
+
+*~
+.fuse_hidden*
+.directory
+
+# ======================
+# Vim
+# ======================
+
+*.swp
+*.swo
+
+# ======================
+# Runtime
+# ======================
+
+*.pid
+*.sock
+
+# ======================
+# Project Secrets
+# ======================
+
+config.yaml
+config.local.yaml
+
+*.pem
+*.key
+*.secret
+
+.smbcred
+.credentials
+
+# ======================
+# Test Data
+# ======================
+
+testdata/
+
+# ======================
+# Temporary
+# ======================
+
+tmp/
+temp/
