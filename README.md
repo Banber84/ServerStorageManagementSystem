@@ -126,7 +126,7 @@ Web Management
 
 * gopsutil（扩展功能）
 
-⸻
+---
 
 项目结构
 
@@ -162,7 +162,7 @@ ServerStorageManagementSystem/
 ├── README.md
 └── LICENSE
 
-⸻
+---
 
 开发计划
 
