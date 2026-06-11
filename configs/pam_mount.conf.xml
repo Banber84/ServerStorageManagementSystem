@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE pam_mount SYSTEM "pam_mount.conf.xml.dtd">
+<pam_mount>
+  <debug enable="0" />
+
+  <volume
+    user="*"
+    fstype="cifs"
+    server="192.168.56.10"
+    path="%(USER)"
+    mountpoint="/home/%(USER)/storage"
+    options="vers=3.0,sec=ntlmssp,nodev,nosuid,iocharset=utf8,uid=%(USERUID),gid=%(USERGID),file_mode=0600,dir_mode=0700" />
+
+  <mntoptions allow="nosuid,nodev,loop,encryption,fsck,nonempty,allow_root,allow_other,vers,sec,iocharset,uid,gid,file_mode,dir_mode" />
+  <mntoptions require="nosuid,nodev" />
+
+  <logout wait="0" hup="0" term="0" kill="0" />
+  <mkmountpoint enable="1" remove="true" />
+</pam_mount>
