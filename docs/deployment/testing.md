@@ -2,12 +2,20 @@
 
 ## 测试环境
 
+本项目当前按 `ubuntu-26.04-live-server-amd64` 编写部署步骤。Ubuntu 可以安装在 Windows PC 的虚拟机、双系统或物理机环境中。
+
 建议准备三台 Ubuntu Server 虚拟机或物理机：
 
 ```text
 Storage Server: 192.168.56.10
 Node01:         192.168.56.11
 Node02:         192.168.56.12
+```
+
+安装准备和静态 IP 配置参考：
+
+```text
+docs/deployment/winpc-ubuntu26.md
 ```
 
 ## 测试 1：用户隔离

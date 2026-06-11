@@ -1,6 +1,20 @@
 # Storage Server 部署文档
 
-## 1. 安装 Ubuntu 软件包
+## 1. 环境要求
+
+本项目当前按 `ubuntu-26.04-live-server-amd64` 编写部署步骤。若 Ubuntu 安装在 Windows PC、双系统或虚拟机中，请先参考：
+
+```text
+docs/deployment/winpc-ubuntu26.md
+```
+
+Storage Server 建议使用固定 IP：
+
+```text
+192.168.56.10
+```
+
+## 2. 安装 Ubuntu 软件包
 
 ```bash
 sudo apt-get update
@@ -13,7 +27,7 @@ sudo apt-get install -y samba quota acl
 sudo scripts/install_storage_server.sh
 ```
 
-## 2. 配置文件
+## 3. 配置文件
 
 项目中的配置文件路径：
 
@@ -41,7 +55,7 @@ Samba 使用 `[homes]` 配置。用户 `alice` 的访问地址为：
 //<storage-server>/alice
 ```
 
-## 3. 启用存储配额
+## 4. 启用存储配额
 
 查看 `/srv/samba/users` 所在文件系统：
 
@@ -77,7 +91,7 @@ sudo mount -o remount /srv/samba
 sudo scripts/quota_manager.sh enable
 ```
 
-## 4. 创建存储用户
+## 5. 创建存储用户
 
 ```bash
 sudo scripts/create_user.sh alice --quota-gb 10
@@ -93,14 +107,14 @@ Samba 用户：alice
 存储配额：10 GB 硬限制，95% 软限制
 ```
 
-## 5. 修改配额
+## 6. 修改配额
 
 ```bash
 sudo scripts/quota_manager.sh set alice 20
 sudo scripts/quota_manager.sh report
 ```
 
-## 6. 删除用户
+## 7. 删除用户
 
 删除账号并归档用户数据：
 
@@ -114,7 +128,7 @@ sudo scripts/delete_user.sh alice
 sudo scripts/delete_user.sh alice --keep-data
 ```
 
-## 7. 验证 Samba
+## 8. 验证 Samba
 
 ```bash
 testparm -s

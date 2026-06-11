@@ -1,5 +1,14 @@
 # 命令参考
 
+## WinPC 上的 Ubuntu 26.04 基础检查
+
+```bash
+lsb_release -a
+uname -m
+ip addr
+sudo systemctl status ssh
+```
+
 ## Storage Server
 
 ```bash
