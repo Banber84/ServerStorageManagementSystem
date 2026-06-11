@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }} - Server Storage Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/">Storage Admin</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="/">Dashboard</a>
+      <a class="nav-link" href="/users">Users</a>
+      <a class="nav-link active" href="/storage">Storage</a>
+      <a class="nav-link" href="/servers">Servers</a>
+      <a class="nav-link" href="/logs">Logs</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-4">
+  <h1 class="h3 mb-3">存储统计</h1>
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>用户</th><th>配额 Bytes</th><th>已用 Bytes</th><th>剩余 Bytes</th><th>路径</th><th>扫描时间</th></tr></thead>
+      <tbody>
+      {{ range .Items }}
+        <tr>
+          <td>{{ .Username }}</td>
+          <td>{{ .QuotaBytes }}</td>
+          <td>{{ .UsedBytes }}</td>
+          <td>{{ .RemainingBytes }}</td>
+          <td>{{ .Path }}</td>
+          <td>{{ .ScannedAt.Format "2006-01-02 15:04:05" }}</td>
+        </tr>
+      {{ else }}
+        <tr><td colspan="6" class="text-secondary">暂无存储统计</td></tr>
+      {{ end }}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-secondary small">存储用量可由后续脚本或采集程序调用 <code>POST /api/storage</code> 写入。</p>
+</main>
+</body>
+</html>
