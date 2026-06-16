@@ -29,6 +29,10 @@ fi
 # shellcheck source=/dev/null
 source "$CONFIG_FILE"
 
+run_quota_cmd() {
+  "$@" 2> >(grep -v 'Cannot stat() mounted device tmpfs' >&2)
+}
+
 USERNAME="$1"
 shift
 KEEP_DATA="0"
@@ -56,7 +60,7 @@ if pdbedit -L | cut -d: -f1 | grep -qx "$USERNAME"; then
 fi
 
 if id "$USERNAME" >/dev/null 2>&1; then
-  setquota -u "$USERNAME" 0 0 0 0 "$(findmnt -no TARGET --target "$STORAGE_ROOT")" 2>/dev/null || true
+  run_quota_cmd setquota -u "$USERNAME" 0 0 0 0 "$(findmnt -no TARGET --target "$STORAGE_ROOT")" || true
   userdel "$USERNAME"
 fi
 

@@ -29,6 +29,10 @@ source "$CONFIG_FILE"
 COMMAND="${1:-}"
 MOUNT_POINT="$(findmnt -no TARGET --target "$STORAGE_ROOT")"
 
+run_quota_cmd() {
+  "$@" 2> >(grep -v 'Cannot stat() mounted device tmpfs' >&2)
+}
+
 case "$COMMAND" in
   enable)
     if ! findmnt -no OPTIONS --target "$STORAGE_ROOT" | grep -Eq '(^|,)usrquota(,|$)'; then
@@ -39,9 +43,9 @@ case "$COMMAND" in
 EOF
       exit 1
     fi
-    quotacheck -cum "$MOUNT_POINT"
-    quotaon -uv "$MOUNT_POINT"
-    repquota -a
+    run_quota_cmd quotacheck -cum "$MOUNT_POINT"
+    run_quota_cmd quotaon -uv "$MOUNT_POINT"
+    run_quota_cmd repquota "$MOUNT_POINT"
     ;;
   set)
     USERNAME="${2:-}"
@@ -60,11 +64,11 @@ EOF
     fi
     BLOCKS=$((QUOTA_GB * 1024 * 1024))
     SOFT=$((BLOCKS * 95 / 100))
-    setquota -u "$USERNAME" "$SOFT" "$BLOCKS" 0 0 "$MOUNT_POINT"
-    quota -u "$USERNAME" || true
+    run_quota_cmd setquota -u "$USERNAME" "$SOFT" "$BLOCKS" 0 0 "$MOUNT_POINT"
+    run_quota_cmd quota -u "$USERNAME" || true
     ;;
   report)
-    repquota -a
+    run_quota_cmd repquota "$MOUNT_POINT"
     ;;
   -h|--help|"")
     usage

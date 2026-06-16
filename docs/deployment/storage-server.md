@@ -18,7 +18,7 @@ Storage Server 建议使用固定 IP：
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y samba quota acl
+sudo apt-get install -y samba smbclient quota acl
 ```
 
 也可以直接执行项目安装脚本：
@@ -84,6 +84,12 @@ sudo mount -o remount /
 sudo scripts/quota_manager.sh enable
 ```
 
+Ubuntu 26.04 的 ext4 quota 命令可能提示 external quota files 已废弃。这是兼容性警告，不影响课程测试中的用户配额功能。只要看到类似以下输出，即表示用户 quota 已启用：
+
+```text
+/dev/mapper/ubuntu--vg-ubuntu--lv [/]: user quotas turned on
+```
+
 如果 `/srv/samba/users` 位于独立挂载点，则重新挂载对应目录：
 
 ```bash
@@ -133,6 +139,7 @@ sudo scripts/delete_user.sh alice --keep-data
 ```bash
 testparm -s
 sudo systemctl status smbd nmbd
+which smbclient
 smbclient -L localhost -U alice
 smbclient //localhost/alice -U alice -c 'mkdir testdir; rmdir testdir'
 ```
