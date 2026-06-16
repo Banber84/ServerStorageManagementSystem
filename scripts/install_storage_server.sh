@@ -19,7 +19,7 @@ fi
 source "$CONFIG_FILE"
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y samba quota acl
+DEBIAN_FRONTEND=noninteractive apt-get install -y samba smbclient quota acl
 
 install -d -m 0755 /etc/ssms
 install -m 0644 "$CONFIG_FILE" /etc/ssms/system.conf

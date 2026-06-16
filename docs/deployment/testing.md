@@ -263,3 +263,52 @@ sudo scripts/storage_usage_report.sh --format json
 ```
 
 预期结果：每个有效用户目录都会输出 `username`、`path` 和 `used_kb`。
+
+## Storage Server 单机实测记录
+
+测试环境：
+
+```text
+系统：Ubuntu 26.04 Server
+虚拟机 IP：192.168.1.187
+登录用户：a2
+测试范围：仅 Storage Server，Node01/Node02 尚未部署
+```
+
+实测结果：
+
+```text
+1. /srv/samba/users 位于根分区 /，文件系统为 ext4。
+2. /etc/fstab 已为根分区增加 defaults,usrquota,grpquota。
+3. findmnt 输出包含 rw,relatime,quota,usrquota,grpquota。
+4. quota_manager.sh enable 成功启用用户 quota。
+5. create_user.sh 成功创建 alice 和 bob。
+6. /srv/samba/users/alice 与 /srv/samba/users/bob 权限均为 0700，属主分别为 alice 和 bob。
+7. smbclient //localhost/alice -U alice 可以列目录、创建目录、删除目录。
+8. smbclient //localhost/bob -U alice 访问失败，用户隔离生效。
+9. storage_usage_report.sh 可输出 alice、bob 的 CSV 和 JSON 使用量，初始目录均约 16 KB。
+10. alice 写入超过 1 GB 测试文件时出现 Disk quota exceeded，配额限制生效。
+11. quota 测试文件已清理。
+```
+
+本次未覆盖：
+
+```text
+1. Node01/Node02 登录自动挂载。
+2. 用户登录任意节点访问同一份数据。
+3. pam_mount 登录触发挂载。
+```
+
+本次测试发现并已改进：
+
+```text
+1. install_storage_server.sh 增加 smbclient 安装，便于直接在 Storage Server 上完成 Samba 自测。
+2. quota_manager.sh 与 delete_user.sh 过滤 Ubuntu 26.04 中可忽略的 tmpfs quota 警告。
+3. quota_manager.sh report 改为只报告 STORAGE_ROOT 所在文件系统，减少无关挂载点噪声。
+```
+
+完整测试报告见：
+
+```text
+docs/deployment/storage-server-test-report.md
+```
