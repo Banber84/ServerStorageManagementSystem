@@ -85,3 +85,17 @@ scripts/request_user_sync.sh alice --quota-gb 1
 ```
 
 该脚本会通过 SSH 请求 Storage Server 执行 `sync_user.sh`，最终仍由 Storage Server 统一同步三方用户状态。
+
+如果需要同步删除三方用户，可以在 Storage Server 上执行：
+
+```bash
+sudo scripts/sync_delete_user.sh alice
+```
+
+也可以从 NodeA 或 NodeB 发起删除请求：
+
+```bash
+scripts/request_user_delete.sh alice
+```
+
+删除同步只处理 Linux/Samba 系统用户和目录归档。agentB 后台数据库中的用户记录仍建议通过 Web 页面或 REST API 删除，避免系统删除和后台审计记录混在一起。

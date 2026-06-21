@@ -11,6 +11,7 @@
 2. 在 NodeA、NodeB 上创建同名 Linux 登录用户。
 3. 三方使用同一个密码。
 4. 用户登录 NodeA 或 NodeB 后，由 pam_mount 自动挂载个人共享目录。
+5. 删除用户时，也可以由 Storage Server 统一同步删除三方用户。
 ```
 
 ## 设计说明
@@ -23,6 +24,12 @@ Storage Server
     ├── 调用 scripts/create_user.sh 创建 Storage Server 用户
     ├── SSH 到 NodeA 调用 scripts/create_node_user.sh
     └── SSH 到 NodeB 调用 scripts/create_node_user.sh
+
+Storage Server
+└── scripts/sync_delete_user.sh
+    ├── 调用 scripts/delete_user.sh 删除 Storage Server 用户并归档数据
+    ├── SSH 到 NodeA 调用 scripts/delete_node_user.sh
+    └── SSH 到 NodeB 调用 scripts/delete_node_user.sh
 ```
 
 该方案不需要新增常驻服务，不需要消息队列，不需要后台 Web 服务持有 root 权限。用户同步可以由管理员在 Storage Server 上执行，也可以由 NodeA/NodeB 通过 SSH 请求 Storage Server 统一执行。
@@ -61,6 +68,8 @@ sudo visudo
 ```text
 nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/ServerStorageManagementSystem/scripts/create_node_user.sh
 nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/ServerStorageManagementSystem/scripts/create_node_user.sh
+nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/ServerStorageManagementSystem/scripts/delete_node_user.sh
+nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/ServerStorageManagementSystem/scripts/delete_node_user.sh
 ```
 
 如果项目目录不同，请改成实际路径。
@@ -85,6 +94,7 @@ sudo visudo
 
 ```text
 a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh
+a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh
 ```
 
 ## 配置节点清单
@@ -148,6 +158,8 @@ DEFAULT_SYNC_QUOTA_GB="1"
 scripts/request_user_sync.sh alice --quota-gb 1
 ```
 
+如果没有配置 SSH key，执行过程中会要求输入 Storage Server 上 `a2` 用户的 SSH 密码。功能可以正常完成，但不适合自动化。建议配置 SSH key 后再作为正式测试结果。
+
 执行流程：
 
 ```text
@@ -163,6 +175,55 @@ scripts/request_user_sync.sh alice --quota-gb 1
 
 ```bash
 ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh --help'
+```
+
+如果该命令不需要输入密码，并且直接显示 `sync_user.sh` 用法，说明节点发起同步所需的 SSH 和 sudo 权限已配置完成。
+
+## 删除用户同步
+
+在 Storage Server 上执行：
+
+```bash
+sudo scripts/sync_delete_user.sh alice
+```
+
+默认行为：
+
+```text
+1. Storage Server 删除 Samba 用户和 Linux 用户。
+2. Storage Server 将 /srv/samba/users/alice 归档为 _deleted_alice_时间。
+3. NodeA 删除本地 Linux 登录用户 alice 和 /home/alice。
+4. NodeB 删除本地 Linux 登录用户 alice 和 /home/alice。
+```
+
+如果需要保留 Storage Server 上的数据目录：
+
+```bash
+sudo scripts/sync_delete_user.sh alice --keep-data
+```
+
+如果需要保留节点本地 home：
+
+```bash
+sudo scripts/sync_delete_user.sh alice --keep-node-home
+```
+
+如果只补删除节点用户：
+
+```bash
+sudo scripts/sync_delete_user.sh alice --nodes-only
+```
+
+从 NodeA/NodeB 发起删除：
+
+```bash
+scripts/request_user_delete.sh alice
+```
+
+验证 Storage Server 删除远程调用：
+
+```bash
+ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh --help'
 ```
 
 ## 只同步 Storage Server
@@ -199,6 +260,21 @@ ls -l /home/alice/storage
 exit
 ```
 
+删除后验证：
+
+```bash
+id alice
+pdbedit -L | grep '^alice:'
+ls -ld /srv/samba/users/alice
+```
+
+在 NodeA/NodeB 上：
+
+```bash
+id alice
+ls -ld /home/alice
+```
+
 ## 注意事项
 
 ```text
@@ -208,4 +284,5 @@ exit
 4. 如果节点上用户已存在，脚本会同步更新该用户密码。
 5. 如果 SSH 用户不能免密 sudo，远程同步会失败。
 6. NodeA/NodeB 发起同步时，本质仍由 Storage Server 执行最终同步，避免多端状态不一致。
+7. 删除用户前应确保该用户已经退出 NodeA/NodeB，否则 userdel 可能因为仍有进程运行而失败。
 ```

@@ -16,6 +16,7 @@ sudo scripts/install_storage_server.sh
 sudo scripts/quota_manager.sh enable
 sudo scripts/create_user.sh alice --quota-gb 10
 sudo scripts/sync_user.sh alice --quota-gb 10
+sudo scripts/sync_delete_user.sh alice
 sudo scripts/quota_manager.sh set alice 20
 sudo scripts/quota_manager.sh report
 sudo scripts/storage_usage_report.sh --format json
@@ -31,6 +32,7 @@ su - alice
 mount | grep /home/alice/storage
 scripts/test_mount.sh alice
 scripts/request_user_sync.sh alice --quota-gb 10
+scripts/request_user_delete.sh alice
 ```
 
 ## Samba 诊断

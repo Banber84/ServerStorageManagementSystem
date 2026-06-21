@@ -16,13 +16,13 @@ usage() {
 EOF
 }
 
-if [[ $EUID -ne 0 ]]; then
-  echo "请使用 root 权限执行：sudo $0"
-  exit 1
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
 fi
 
-if [[ $# -lt 1 ]]; then
-  usage
+if [[ $EUID -ne 0 ]]; then
+  echo "请使用 root 权限执行：sudo $0"
   exit 1
 fi
 
@@ -36,6 +36,16 @@ run_quota_cmd() {
 USERNAME="$1"
 shift
 KEEP_DATA="0"
+
+if [[ -z "$USERNAME" ]]; then
+  usage
+  exit 1
+fi
+
+if [[ ! "$USERNAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+  echo "用户名非法：$USERNAME"
+  exit 1
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

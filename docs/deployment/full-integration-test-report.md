@@ -8,8 +8,8 @@
 安装介质：ubuntu-26.04-live-server-amd64
 测试范围：Storage Server、NodeA、NodeB 三虚拟机联调
 Storage Server IP：192.168.1.187
-NodeA：已部署，IP 以实际虚拟机为准
-NodeB：已部署，IP 以实际虚拟机为准
+NodeA：192.168.1.122，登录用户 nodea1
+NodeB：192.168.1.125，登录用户 nodeb1
 项目目录：~/ServerStorageManagementSystem
 ```
 
@@ -180,6 +180,135 @@ bob 登录后看不到 alice 的文件。
 
 结论：用户隔离生效，bob 不能访问 alice 的数据。
 
+### 6. NodeA 发起用户同步测试
+
+测试目标：验证登录节点也可以作为用户创建入口，由节点请求 Storage Server 统一同步三方用户。
+
+在 NodeA 上执行：
+
+```bash
+cd ~/ServerStorageManagementSystem
+scripts/request_user_sync.sh nodecreate1 --quota-gb 1
+```
+
+执行过程中输入两次统一密码。随后脚本通过 SSH 调用 Storage Server：
+
+```text
+向 Storage Server 发起用户同步：a2@192.168.1.187
+```
+
+实测结果：
+
+```text
+Storage Server 成功创建 nodecreate1 的 Linux 用户。
+Storage Server 成功创建 nodecreate1 的 Samba 用户。
+Storage Server 成功为 nodecreate1 设置 1 GB quota。
+Storage Server 继续同步 NodeA、NodeB 上的同名登录用户。
+```
+
+结论：NodeA 作为同步发起端的主流程可用。
+
+说明：本次测试中，NodeA 发起请求时仍需要输入 Storage Server 上 `a2` 用户的 SSH 登录密码。该行为不影响功能正确性，但会影响自动化体验。后续已明确通过 SSH key 配置免密登录来优化。
+
+### 7. SSH 免密优化验证项
+
+为实现“节点一键发起同步”，需要配置 NodeA/NodeB 到 Storage Server 的 SSH key。
+
+NodeA 上执行：
+
+```bash
+ssh-keygen -t ed25519
+ssh-copy-id a2@192.168.1.187
+ssh a2@192.168.1.187 'hostname'
+```
+
+NodeB 上执行：
+
+```bash
+ssh-keygen -t ed25519
+ssh-copy-id a2@192.168.1.187
+ssh a2@192.168.1.187 'hostname'
+```
+
+Storage Server 上确认 sudoers：
+
+```text
+a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh
+```
+
+验证命令：
+
+```bash
+ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh --help'
+```
+
+预期结果：
+
+```text
+直接显示 sync_user.sh 用法，不再要求输入 a2 密码。
+```
+
+### 8. 三方删除同步测试
+
+测试目标：验证 Storage Server、NodeA、NodeB 均可作为删除同步发起端，最终删除三方同名用户。
+
+#### 8.1 Storage Server 发起删除
+
+在 Storage Server 上执行：
+
+```bash
+cd ~/ServerStorageManagementSystem
+sudo scripts/sync_delete_user.sh nodecreate2
+```
+
+实测结果：
+
+```text
+Storage Server 成功删除 nodecreate2 的 Samba 用户和 Linux 用户。
+Storage Server 将 /srv/samba/users/nodecreate2 归档为 _deleted_nodecreate2_时间。
+Storage Server 同步删除 NodeA、NodeB 上的 nodecreate2 本地登录用户。
+```
+
+结论：Storage Server 作为删除同步发起端测试通过。
+
+#### 8.2 NodeA 发起删除
+
+在 NodeA 上执行：
+
+```bash
+cd ~/ServerStorageManagementSystem
+scripts/request_user_delete.sh nodecreate3
+```
+
+实测结果：
+
+```text
+NodeA 成功请求 Storage Server 执行删除同步。
+Storage Server 成功删除 nodecreate3 的 Samba 用户和 Linux 用户。
+Storage Server 成功同步删除 NodeA、NodeB 上的 nodecreate3 本地登录用户。
+```
+
+结论：NodeA 作为删除同步发起端测试通过。
+
+#### 8.3 NodeB 发起删除
+
+在 NodeB 上执行：
+
+```bash
+cd ~/ServerStorageManagementSystem
+scripts/request_user_delete.sh nodecreate4
+```
+
+实测结果：
+
+```text
+NodeB 成功请求 Storage Server 执行删除同步。
+Storage Server 成功删除 nodecreate4 的 Samba 用户和 Linux 用户。
+Storage Server 成功同步删除 NodeA、NodeB 上的 nodecreate4 本地登录用户。
+```
+
+结论：NodeB 作为删除同步发起端测试通过。
+
 ## 测试结论
 
 三虚拟机完整联调测试通过。
@@ -196,6 +325,10 @@ bob 登录后看不到 alice 的文件。
 7. alice 在不同节点访问同一份共享数据。
 8. bob 登录后看不到 alice 的文件。
 9. Samba 用户隔离、Linux 权限隔离、pam_mount 自动挂载、跨节点共享访问均通过。
+10. NodeA 可以作为用户同步发起端，请求 Storage Server 创建并同步用户。
+11. Storage Server 可以作为删除同步发起端，删除三方用户。
+12. NodeA 可以作为删除同步发起端，删除三方用户。
+13. NodeB 可以作为删除同步发起端，删除三方用户。
 ```
 
 ## 本次测试发现的问题与处理
@@ -248,10 +381,82 @@ sudo -u alice ls -l /mnt/ssms-alice
 
 结果：root 和 alice 均可查看，权限设计正确。
 
+### 3. NodeA 发起同步时仍需输入 a2 SSH 密码
+
+现象：
+
+```text
+a2@192.168.1.187's password:
+```
+
+原因：
+
+```text
+NodeA 尚未配置到 Storage Server 的 SSH key 免密登录。
+request_user_sync.sh 需要通过 SSH 调用 Storage Server 上的 sync_user.sh，因此会要求输入 a2 的 SSH 密码。
+```
+
+处理：
+
+```bash
+ssh-keygen -t ed25519
+ssh-copy-id a2@192.168.1.187
+ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh --help'
+```
+
+结果：配置 SSH key 后，节点发起同步时只需要输入新用户统一密码，不需要再输入 `a2` SSH 密码。
+
+### 4. 删除同步时远程 sudo 需要免密权限
+
+现象：
+
+```text
+sudo: A terminal is required to authenticate
+sudo: interactive authentication is required
+```
+
+原因：
+
+```text
+删除同步需要跨机器执行 sudo scripts/delete_node_user.sh 或 sudo scripts/sync_delete_user.sh。
+如果 sudoers 未配置 NOPASSWD，远程 SSH 命令无法交互输入 sudo 密码。
+```
+
+处理：
+
+Storage Server 上允许 a2 被节点远程调用删除同步脚本：
+
+```text
+a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh
+```
+
+NodeA 上允许 nodea1 被 Storage Server 远程调用节点删除脚本：
+
+```text
+nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/ServerStorageManagementSystem/scripts/delete_node_user.sh
+```
+
+NodeB 上允许 nodeb1 被 Storage Server 远程调用节点删除脚本：
+
+```text
+nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/ServerStorageManagementSystem/scripts/delete_node_user.sh
+```
+
+验证：
+
+```bash
+ssh a2@192.168.1.187 'sudo -n /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh --help'
+ssh nodea1@192.168.1.122 'sudo -n /home/nodea1/ServerStorageManagementSystem/scripts/delete_node_user.sh --help'
+ssh nodeb1@192.168.1.125 'sudo -n /home/nodeb1/ServerStorageManagementSystem/scripts/delete_node_user.sh --help'
+```
+
+结果：配置后删除同步测试通过。
+
 ## 后续建议
 
 ```text
 1. 在 docs/deployment/node-client.md 中补充 Permission denied 排错说明。
-2. 后续可把 NodeA、NodeB 的实际 IP 写入本报告，便于最终归档。
-3. 若需要长期运行节点状态采集 Agent，可继续补充 systemd 服务文件。
+2. 若需要长期运行节点状态采集 Agent，可继续补充 systemd 服务文件。
+3. 后续可以把用户同步脚本和后台 API 对接，实现创建用户后自动写入后台 users 表。
+4. 后续可以把删除同步脚本和后台 API 对接，实现删除用户后自动删除后台 users 表记录。
 ```
