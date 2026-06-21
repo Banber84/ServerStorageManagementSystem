@@ -54,6 +54,79 @@ http://192.168.1.187:8080
 | TC-05 | 日志管理 | 调用 `POST /api/logs` 写入登录日志 | `/logs` 显示日志记录 | 日志正常显示 | 通过 |
 | TC-06 | 首页汇总 | 写入用户、存储、节点、日志后刷新首页 | 首页汇总数据更新 | 首页汇总正常 | 通过 |
 
+## 新增接口测试记录
+
+### 测试信息
+
+| 项目 | 内容 |
+| --- | --- |
+| 测试日期 | 2026-06-21 |
+| 测试地点 | 服务机 |
+| 测试范围 | A/B 联调用新增 REST API |
+| 测试结论 | 新增接口无问题 |
+
+### 测试用例与结果
+
+| 编号 | 测试项 | 测试方法 | 预期结果 | 实际结果 | 结论 |
+| --- | --- | --- | --- | --- | --- |
+| TC-07 | 按用户名修改配额 | 调用 `PUT /api/users/{username}/quota` | 返回目标用户，配额更新为请求值 | 接口返回正常，页面和查询结果同步更新 | 通过 |
+| TC-08 | 按用户名写入存储统计 | 调用 `POST /api/storage/by-username` | 返回目标用户存储统计，已用和剩余空间正确 | 接口返回正常，存储页面和汇总数据同步更新 | 通过 |
+| TC-09 | 原按 ID 修改配额兼容性 | 调用 `PUT /api/users/{id}/quota` | 原接口仍可按 ID 修改配额 | 原接口正常可用 | 通过 |
+
+### 新增接口测试命令
+
+按用户名修改配额：
+
+```bash
+curl -X PUT http://192.168.1.187:8080/api/users/alice/quota \
+  -H 'Content-Type: application/json' \
+  -d '{"quota_bytes":2147483648}'
+```
+
+预期响应包含：
+
+```json
+{
+  "username": "alice",
+  "quota_bytes": 2147483648
+}
+```
+
+按用户名写入存储统计：
+
+```bash
+curl -X POST http://192.168.1.187:8080/api/storage/by-username \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","used_bytes":1048576,"path":"/srv/samba/users/alice"}'
+```
+
+预期响应包含：
+
+```json
+{
+  "username": "alice",
+  "used_bytes": 1048576,
+  "remaining_bytes": 2146435072
+}
+```
+
+原按 ID 修改配额兼容性测试：
+
+```bash
+curl -X PUT http://192.168.1.187:8080/api/users/1/quota \
+  -H 'Content-Type: application/json' \
+  -d '{"quota_bytes":3221225472}'
+```
+
+### 新增接口测试结论
+
+服务机测试确认：
+
+- `PUT /api/users/{username}/quota` 可以直接按 Linux/Samba 用户名同步后台配额。
+- `POST /api/storage/by-username` 可以直接按用户名同步存储使用量。
+- 原有 `PUT /api/users/{id}/quota` 仍然兼容。
+- 新接口满足 A 的脚本侧对接需求，脚本不再需要查询后台数据库用户 ID。
+
 ## 关键测试命令
 
 健康检查：
@@ -110,7 +183,7 @@ curl -X POST http://192.168.1.187:8080/api/logs \
 第一版 demo 主要验证后台页面和 API，系统层能力仍需要继续联调：
 
 - Samba 用户创建脚本与后台用户 API 自动对接。
-- 存储使用量脚本 `storage_usage_report.sh` 与后台 `POST /api/storage` 自动对接。
+- 存储使用量脚本 `storage_usage_report.sh` 后续可通过 `POST /api/storage/by-username` 自动同步到后台。
 - 登录节点 Agent 长期运行方式需要加入 systemd 管理。
 - 用户删除和配额修改需要与 Linux/Samba 实际系统状态保持一致。
 - 后续可以增加登录认证，避免管理后台裸露在局域网内。
