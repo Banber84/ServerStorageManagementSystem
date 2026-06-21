@@ -1,0 +1,13 @@
+[Unit]
+Description=Server Storage Management System Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/storage-agent -server http://192.168.1.187:8080 -name node01 -address 192.168.1.188 -disk / -interval 30s
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

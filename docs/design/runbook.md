@@ -63,17 +63,42 @@ go run ./agent -server http://192.168.1.187:8080 -name node01 -disk /
 - `-interval`：上报间隔，默认 `30s`。
 - `-once`：只上报一次后退出，适合测试。
 
+管理后台会把超过 2 分钟没有上报的节点标记为离线。首页和节点监控页面每 30 秒自动刷新一次，所以 Agent 停止后，页面会在离线阈值到达后自动显示离线状态。
+
+如果需要清理不再使用的节点，可以在 `/servers` 页面点击删除，或调用管理员删除接口：
+
+```bash
+curl -X DELETE http://127.0.0.1:8080/api/servers/1
+```
+
+删除只会清理后台节点状态记录，不会停止节点上的 Agent。如果 Agent 仍在运行，下一次上报后节点会重新出现。
+
 只上报一次：
 
 ```bash
 go run ./agent -server http://127.0.0.1:8080 -name node01 -disk / -once
 ```
 
+注意：`agent/` 不是独立 Go module，`go.mod` 位于仓库根目录。开发测试时应在项目根目录执行 `go run ./agent`。部署到其他节点时，建议先在根目录编译二进制，再分发 `bin/storage-agent`。
+
 ## 编译二进制
 
 ```bash
 go build -o bin/storage-server ./server
 go build -o bin/storage-agent ./agent
+```
+
+分发 Agent 到节点示例：
+
+```bash
+scp bin/storage-agent user@192.168.1.188:/tmp/storage-agent
+ssh user@192.168.1.188 'sudo install -m 0755 /tmp/storage-agent /usr/local/bin/storage-agent'
+```
+
+systemd 常驻运行模板见：
+
+```text
+agent/storage-agent.service
 ```
 
 ## API 快速测试

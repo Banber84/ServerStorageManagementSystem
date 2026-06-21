@@ -14,12 +14,17 @@ type Store struct {
 	db *sql.DB
 }
 
+const ServerOfflineThreshold = 2 * time.Minute
+
 func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
 func (s *Store) Dashboard() (models.Dashboard, error) {
 	var dashboard models.Dashboard
+	if err := s.MarkOfflineAfter(ServerOfflineThreshold); err != nil {
+		return dashboard, err
+	}
 	if err := s.db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(quota_bytes), 0) FROM users`).Scan(&dashboard.UserCount, &dashboard.TotalQuotaBytes); err != nil {
 		return dashboard, err
 	}
@@ -327,6 +332,42 @@ func (s *Store) ListServers() ([]models.ServerStatus, error) {
 		servers = append(servers, server)
 	}
 	return servers, rows.Err()
+}
+
+func (s *Store) DeleteServer(id int64) error {
+	server, err := s.GetServer(id)
+	if err != nil {
+		return err
+	}
+	result, err := s.db.Exec(`DELETE FROM servers WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	_, _ = s.db.Exec(
+		`INSERT INTO logs (type, server_name, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
+		server.Name,
+		"deleted server status record",
+	)
+	return nil
+}
+
+func (s *Store) GetServer(id int64) (models.ServerStatus, error) {
+	var server models.ServerStatus
+	var online int
+	err := s.db.QueryRow(
+		`SELECT id, name, address, cpu_usage, memory_usage, disk_usage, online, last_seen, created_at, updated_at
+		   FROM servers WHERE id = ?`,
+		id,
+	).Scan(&server.ID, &server.Name, &server.Address, &server.CPUUsage, &server.MemoryUsage, &server.DiskUsage, &online, &server.LastSeen, &server.CreatedAt, &server.UpdatedAt)
+	server.Online = online == 1
+	return server, err
 }
 
 func (s *Store) CreateLog(req models.CreateLogRequest) (models.LogEntry, error) {

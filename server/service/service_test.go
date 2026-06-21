@@ -110,3 +110,86 @@ func TestStoreManagementFlow(t *testing.T) {
 		t.Fatalf("unexpected dashboard storage totals: %#v", dashboard)
 	}
 }
+
+func TestDashboardMarksStaleServersOffline(t *testing.T) {
+	db, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	store := service.NewStore(db)
+	if _, err := store.UpsertServerReport(models.ServerReportRequest{
+		Name:        "node01",
+		Address:     "192.168.1.21",
+		CPUUsage:    10,
+		MemoryUsage: 20,
+		DiskUsage:   30,
+	}); err != nil {
+		t.Fatalf("upsert server report: %v", err)
+	}
+
+	if _, err := db.Exec(`UPDATE servers SET online = 1, last_seen = datetime('now', '-3 minutes') WHERE name = 'node01'`); err != nil {
+		t.Fatalf("age server report: %v", err)
+	}
+
+	dashboard, err := store.Dashboard()
+	if err != nil {
+		t.Fatalf("dashboard: %v", err)
+	}
+	if dashboard.ServerCount != 1 {
+		t.Fatalf("server count = %d, want 1", dashboard.ServerCount)
+	}
+	if dashboard.OnlineServers != 0 {
+		t.Fatalf("online servers = %d, want 0", dashboard.OnlineServers)
+	}
+	if len(dashboard.Servers) != 1 || dashboard.Servers[0].Online {
+		t.Fatalf("stale server should be offline: %#v", dashboard.Servers)
+	}
+}
+
+func TestDeleteServer(t *testing.T) {
+	db, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	store := service.NewStore(db)
+	server, err := store.UpsertServerReport(models.ServerReportRequest{
+		Name:        "node01",
+		Address:     "192.168.1.21",
+		CPUUsage:    10,
+		MemoryUsage: 20,
+		DiskUsage:   30,
+	})
+	if err != nil {
+		t.Fatalf("upsert server report: %v", err)
+	}
+
+	if err := store.DeleteServer(server.ID); err != nil {
+		t.Fatalf("delete server: %v", err)
+	}
+	servers, err := store.ListServers()
+	if err != nil {
+		t.Fatalf("list servers: %v", err)
+	}
+	if len(servers) != 0 {
+		t.Fatalf("servers after delete = %#v, want empty", servers)
+	}
+
+	logs, err := store.ListLogs(10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	found := false
+	for _, log := range logs {
+		if log.ServerName == "node01" && log.Message == "deleted server status record" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("delete log not found: %#v", logs)
+	}
+}

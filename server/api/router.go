@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -32,6 +31,7 @@ func NewRouter(store *service.Store) *gin.Engine {
 	router.POST("/users", handler.createUserForm)
 	router.POST("/users/:id/delete", handler.deleteUserForm)
 	router.POST("/users/:id/quota", handler.updateQuotaForm)
+	router.POST("/servers/:id/delete", handler.deleteServerForm)
 	router.POST("/logs", handler.createLogForm)
 
 	group := router.Group("/api")
@@ -45,6 +45,7 @@ func NewRouter(store *service.Store) *gin.Engine {
 	group.POST("/storage", handler.upsertStorageUsage)
 	group.POST("/storage/by-username", handler.upsertStorageUsageByUsername)
 	group.GET("/servers", handler.listServers)
+	group.DELETE("/servers/:id", handler.deleteServer)
 	group.POST("/servers/report", handler.reportServer)
 	group.GET("/logs", handler.listLogs)
 	group.POST("/logs", handler.createLog)
@@ -72,7 +73,7 @@ func (h *Handler) storagePage(ctx *gin.Context) {
 }
 
 func (h *Handler) serversPage(ctx *gin.Context) {
-	_ = h.store.MarkOfflineAfter(2 * time.Minute)
+	_ = h.store.MarkOfflineAfter(service.ServerOfflineThreshold)
 	servers, err := h.store.ListServers()
 	render(ctx, "servers.html", gin.H{"Title": "Servers", "Servers": servers}, err)
 }
@@ -198,7 +199,7 @@ func (h *Handler) upsertStorageUsageByUsername(ctx *gin.Context) {
 }
 
 func (h *Handler) listServers(ctx *gin.Context) {
-	_ = h.store.MarkOfflineAfter(2 * time.Minute)
+	_ = h.store.MarkOfflineAfter(service.ServerOfflineThreshold)
 	servers, err := h.store.ListServers()
 	respond(ctx, servers, err)
 }
@@ -211,6 +212,27 @@ func (h *Handler) reportServer(ctx *gin.Context) {
 	}
 	server, err := h.store.UpsertServerReport(req)
 	respond(ctx, server, err)
+}
+
+func (h *Handler) deleteServer(ctx *gin.Context) {
+	id, ok := idParam(ctx)
+	if !ok {
+		return
+	}
+	err := h.store.DeleteServer(id)
+	respondNoContent(ctx, err)
+}
+
+func (h *Handler) deleteServerForm(ctx *gin.Context) {
+	id, ok := idParam(ctx)
+	if !ok {
+		return
+	}
+	if err := h.store.DeleteServer(id); err != nil {
+		ctx.String(statusCode(err), err.Error())
+		return
+	}
+	ctx.Redirect(http.StatusSeeOther, "/servers")
 }
 
 func (h *Handler) listLogs(ctx *gin.Context) {

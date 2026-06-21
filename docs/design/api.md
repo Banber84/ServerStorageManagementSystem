@@ -154,6 +154,23 @@ PUT /api/users/alice/quota
 
 查询全部节点状态。后台会把超过 2 分钟没有上报的节点标记为离线。
 
+### `DELETE /api/servers/{id}`
+
+管理员删除节点状态记录。
+
+说明：
+
+- 该接口只删除后台 `servers` 表中的节点状态记录。
+- 不会停止节点上的 Agent 进程。
+- 如果节点 Agent 继续运行，下一次上报后该节点会重新出现在后台。
+- 适合清理测试节点、改名后的旧节点或已废弃节点。
+
+成功响应：
+
+```text
+204 No Content
+```
+
 ### `POST /api/servers/report`
 
 节点 Agent 上报接口。
