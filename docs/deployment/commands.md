@@ -1,5 +1,14 @@
 # 命令参考
 
+## ssmsctl 统一入口
+
+```bash
+ssmsctl --help
+ssmsctl node --help
+ssmsctl user --help
+ssmsctl system status
+```
+
 ## WinPC 上的 Ubuntu 26.04 基础检查
 
 ```bash
@@ -28,6 +37,17 @@ sudo scripts/backend_sync.sh sync-usage --format-summary
 sudo scripts/delete_user.sh alice --keep-data
 ```
 
+对应的统一命令：
+
+```bash
+sudo ssmsctl node join NodeC 192.168.1.215 nodec1
+sudo ssmsctl node leave NodeC --storage-user a2
+sudo ssmsctl user create alice --quota-gb 10
+sudo ssmsctl user delete alice
+sudo ssmsctl quota set alice 20
+sudo ssmsctl usage sync
+```
+
 ## 登录节点
 
 ```bash
@@ -40,6 +60,14 @@ mount | grep /home/alice/storage
 scripts/test_mount.sh alice
 scripts/request_user_sync.sh alice --quota-gb 10
 scripts/request_user_delete.sh alice
+```
+
+对应的统一命令：
+
+```bash
+ssmsctl user request-create alice --quota-gb 10
+ssmsctl user request-delete alice
+ssmsctl gateway status
 ```
 
 ## Samba 诊断

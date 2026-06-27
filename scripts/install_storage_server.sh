@@ -26,6 +26,7 @@ install -m 0644 "$CONFIG_FILE" /etc/ssms/system.conf
 if [[ -f "$PROJECT_ROOT/configs/backend.conf" ]]; then
   install -m 0644 "$PROJECT_ROOT/configs/backend.conf" /etc/ssms/backend.conf
 fi
+install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl
 
 if ! getent group "$STORAGE_GROUP" >/dev/null; then
   groupadd --system "$STORAGE_GROUP"
@@ -49,6 +50,8 @@ systemctl restart smbd nmbd
 
 cat <<EOF
 Storage Server 基础安装完成。
+
+统一管理命令：ssmsctl --help
 
 下一步：
 1. 为 $STORAGE_ROOT 所在文件系统启用 quota 挂载参数。

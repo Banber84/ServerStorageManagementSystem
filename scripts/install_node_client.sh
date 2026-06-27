@@ -26,6 +26,7 @@ install -m 0644 "$CONFIG_FILE" /etc/ssms/system.conf
 if [[ -f "$PROJECT_ROOT/configs/sync.conf" ]]; then
   install -m 0644 "$PROJECT_ROOT/configs/sync.conf" /etc/ssms/sync.conf
 fi
+install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl
 
 if [[ -f /etc/security/pam_mount.conf.xml ]]; then
   cp /etc/security/pam_mount.conf.xml "/etc/security/pam_mount.conf.xml.bak.$(date +%Y%m%d%H%M%S)"
@@ -41,6 +42,8 @@ pam-auth-update --enable mount
 
 cat <<EOF
 登录节点安装完成。
+
+统一管理命令：ssmsctl --help
 
 请在该节点创建对应的 Linux 登录用户：
   sudo adduser USERNAME

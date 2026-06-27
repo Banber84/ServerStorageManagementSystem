@@ -7,7 +7,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "检查 Shell 语法。"
 while IFS= read -r -d '' script; do
   bash -n "$script"
-done < <(find "$PROJECT_ROOT/scripts" -type f -name '*.sh' -print0 | sort -z)
+done < <(find "$PROJECT_ROOT/scripts" -type f \( -name '*.sh' -o -name 'ssmsctl' \) -print0 | sort -z)
 
 echo "检查关键命令帮助入口。"
 for script in \
@@ -17,10 +17,17 @@ for script in \
   install_node_agent.sh \
   install_smb_gateway.sh \
   join_node.sh \
-  leave_node.sh
+  leave_node.sh \
+  ssmsctl
 do
   "$PROJECT_ROOT/scripts/$script" --help >/dev/null
 done
+"$PROJECT_ROOT/scripts/ssmsctl" node --help >/dev/null
+"$PROJECT_ROOT/scripts/ssmsctl" user --help >/dev/null
+"$PROJECT_ROOT/scripts/ssmsctl" quota --help >/dev/null
+"$PROJECT_ROOT/scripts/ssmsctl" gateway --help >/dev/null
+"$PROJECT_ROOT/scripts/ssmsctl" usage --help >/dev/null
+"$PROJECT_ROOT/scripts/ssmsctl" system --help >/dev/null
 
 echo "检查后台 API 路径。"
 grep -qF '/api/users/username/$username/quota' "$PROJECT_ROOT/scripts/backend_sync.sh"
@@ -39,6 +46,9 @@ grep -qF 'SMB 网关卸载检查失败' "$PROJECT_ROOT/scripts/leave_node.sh"
 grep -qF 'OnUnitActiveSec=1min' "$PROJECT_ROOT/configs/storage-usage-sync.timer"
 grep -qF '<meta http-equiv="refresh" content="30">' "$PROJECT_ROOT/server/templates/storage.html"
 grep -qF 'systemctl restart storage-usage-sync.timer' "$PROJECT_ROOT/scripts/install_management_server.sh"
+grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_node_client.sh"
+grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_storage_server.sh"
+grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_management_server.sh"
 
 echo "检查统一节点配置更新。"
 tmp_dir="$(mktemp -d)"

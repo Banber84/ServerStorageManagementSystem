@@ -172,6 +172,7 @@ ServerStorageManagementSystem/
 │   ├── request_user_delete.sh
 │   ├── request_user_sync.sh
 │   ├── storage_usage_report.sh
+│   ├── ssmsctl
 │   ├── sync_delete_user.sh
 │   ├── sync_user.sh
 │   ├── test_mount.sh
@@ -195,6 +196,16 @@ ServerStorageManagementSystem/
 ├── README.md
 └── LICENSE
 ```
+
+统一运维入口：
+
+```bash
+ssmsctl --help
+sudo ssmsctl user create alice --quota-gb 10
+sudo ssmsctl node join NodeC 192.168.1.215 nodec1
+```
+
+完整命令说明见 `docs/deployment/ssmsctl.md`。
 
 ---
 

@@ -1,0 +1,383 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROGRAM_NAME="ssmsctl"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT=""
+SCRIPT_DIR=""
+
+usage() {
+  cat <<'EOF'
+用法：
+  ssmsctl <资源> <操作> [参数]
+
+资源与操作：
+  node      join | leave | list
+  user      create | delete | request-create | request-delete
+  quota     enable | set | report
+  gateway   deploy | install | uninstall | status
+  usage     sync | report
+  backend   health
+  system    status | check
+
+常用示例：
+  sudo ssmsctl node join NodeC 192.168.1.215 nodec1
+  sudo ssmsctl node leave NodeC --storage-user a2
+  ssmsctl node list
+  sudo ssmsctl user create alice --quota-gb 10
+  sudo ssmsctl user delete alice
+  ssmsctl user request-create alice --quota-gb 10
+  sudo ssmsctl quota set alice 20
+  sudo ssmsctl gateway deploy --node NodeC
+  ssmsctl gateway status NodeC
+  sudo ssmsctl usage sync
+  ssmsctl system status
+  ssmsctl system check
+
+使用 “ssmsctl <资源> --help” 查看分组帮助。
+EOF
+}
+
+group_usage() {
+  case "$1" in
+    node)
+      cat <<'EOF'
+节点管理：
+  sudo ssmsctl node join NODE_NAME NODE_HOST NODE_USER [join_node.sh 选项]
+  sudo ssmsctl node leave NODE_NAME [leave_node.sh 选项]
+  ssmsctl node list
+EOF
+      ;;
+    user)
+      cat <<'EOF'
+用户管理：
+  sudo ssmsctl user create USERNAME [--quota-gb GB] [sync_user.sh 选项]
+  sudo ssmsctl user delete USERNAME [sync_delete_user.sh 选项]
+  ssmsctl user request-create USERNAME [--quota-gb GB]
+  ssmsctl user request-delete USERNAME [request_user_delete.sh 选项]
+
+create/delete 在 Storage Server 上执行；request-* 在登录节点上执行。
+EOF
+      ;;
+    quota)
+      cat <<'EOF'
+配额管理：
+  sudo ssmsctl quota enable
+  sudo ssmsctl quota set USERNAME QUOTA_GB [--no-backend]
+  sudo ssmsctl quota report
+EOF
+      ;;
+    gateway)
+      cat <<'EOF'
+SMB Gateway 管理：
+  sudo ssmsctl gateway deploy [--nodes-file PATH] [--node NODE_NAME]
+  sudo ssmsctl gateway install --storage-server HOST
+  sudo ssmsctl gateway uninstall
+  ssmsctl gateway status [NODE_NAME]
+
+status 不带节点名时检查本机；指定节点名时通过 SSH 检查该登录节点。
+EOF
+      ;;
+    usage)
+      cat <<'EOF'
+存储用量：
+  sudo ssmsctl usage sync
+  sudo ssmsctl usage report [--format csv|json]
+EOF
+      ;;
+    backend)
+      cat <<'EOF'
+管理后台：
+  ssmsctl backend health
+EOF
+      ;;
+    system)
+      cat <<'EOF'
+系统维护：
+  ssmsctl system status
+  ssmsctl system check
+EOF
+      ;;
+    *)
+      echo "未知资源：$1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+resolve_project_root() {
+  local candidate sync_project invoking_user invoking_home
+  local candidates=()
+
+  if [[ -n "${SSMS_PROJECT_ROOT:-}" ]]; then
+    candidates+=("$SSMS_PROJECT_ROOT")
+  fi
+  if [[ -x "$SELF_DIR/sync_user.sh" ]]; then
+    candidates+=("$(cd "$SELF_DIR/.." && pwd)")
+  fi
+  if [[ -x "$PWD/scripts/sync_user.sh" ]]; then
+    candidates+=("$PWD")
+  fi
+  if [[ -f /etc/ssms/sync.conf ]]; then
+    sync_project="$(
+      set +u
+      # shellcheck source=/dev/null
+      source /etc/ssms/sync.conf
+      printf '%s' "${STORAGE_SYNC_PROJECT_DIR:-}"
+    )"
+    if [[ -n "$sync_project" ]]; then
+      candidates+=("$sync_project")
+    fi
+  fi
+
+  invoking_user="${SUDO_USER:-${USER:-}}"
+  if [[ -n "$invoking_user" ]] && command -v getent >/dev/null 2>&1; then
+    invoking_home="$(getent passwd "$invoking_user" | cut -d: -f6)"
+    if [[ -n "$invoking_home" ]]; then
+      candidates+=("$invoking_home/ServerStorageManagementSystem")
+    fi
+  fi
+  candidates+=("/opt/ssms")
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -d "$candidate/scripts" && -x "$candidate/scripts/sync_user.sh" ]]; then
+      PROJECT_ROOT="$(cd "$candidate" && pwd)"
+      SCRIPT_DIR="$PROJECT_ROOT/scripts"
+      return
+    fi
+  done
+
+  echo "找不到 SSMS 项目目录。请在项目目录执行，或设置 SSMS_PROJECT_ROOT。" >&2
+  exit 1
+}
+
+require_root() {
+  local arg
+  if [[ $EUID -ne 0 ]]; then
+    printf '该操作需要 root 权限，请使用：sudo %s %s %s' \
+      "$PROGRAM_NAME" "$RESOURCE" "$ACTION" >&2
+    for arg in "$@"; do
+      printf ' %q' "$arg" >&2
+    done
+    printf '\n' >&2
+    exit 1
+  fi
+}
+
+run_script() {
+  local script="$1"
+  shift
+  if [[ ! -x "$SCRIPT_DIR/$script" ]]; then
+    echo "缺少可执行脚本：$SCRIPT_DIR/$script" >&2
+    exit 1
+  fi
+  exec "$SCRIPT_DIR/$script" "$@"
+}
+
+run_privileged_script() {
+  local script="$1"
+  shift
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    run_script "$script" "$@"
+  fi
+  require_root "$@"
+  run_script "$script" "$@"
+}
+
+run_as_invoking_user() {
+  local script="$1"
+  shift
+  if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    exec sudo -u "$SUDO_USER" "$SCRIPT_DIR/$script" "$@"
+  fi
+  run_script "$script" "$@"
+}
+
+nodes_file() {
+  if [[ -f /etc/ssms/nodes.conf ]]; then
+    printf '%s\n' /etc/ssms/nodes.conf
+  else
+    printf '%s\n' "$PROJECT_ROOT/configs/nodes.conf"
+  fi
+}
+
+list_nodes() {
+  local file
+  file="$(nodes_file)"
+  if [[ ! -f "$file" ]]; then
+    echo "节点清单不存在：$file" >&2
+    exit 1
+  fi
+
+  printf 'NAME\tHOST\tSSH_USER\tPROJECT_DIR\n'
+  awk '!/^#/ && NF { printf "%s\t%s\t%s\t%s\n", $1, $2, $3, $4 }' "$file"
+}
+
+local_gateway_status() {
+  local socket_state service_state target
+  if ! command -v systemctl >/dev/null 2>&1; then
+    echo "当前系统不支持 systemd。" >&2
+    exit 1
+  fi
+
+  socket_state="$(systemctl is-active ssms-smb-gateway.socket 2>/dev/null || true)"
+  service_state="$(systemctl is-active ssms-smb-gateway.service 2>/dev/null || true)"
+  target="$(grep -Eo '[a-zA-Z0-9._:-]+:445' \
+    /etc/systemd/system/ssms-smb-gateway.service 2>/dev/null | tail -n 1 || true)"
+  printf 'socket=%s service=%s target=%s\n' \
+    "${socket_state:-unknown}" "${service_state:-unknown}" "${target:-unknown}"
+  ss -H -ltn 'sport = :445' 2>/dev/null || true
+}
+
+remote_gateway_status() {
+  local node_name="$1"
+  local file line node_host node_user node_project extra
+  local ssh_cmd=(ssh)
+
+  if [[ ! "$node_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "节点名非法：$node_name" >&2
+    exit 1
+  fi
+  file="$(nodes_file)"
+  line="$(awk -v name="$node_name" '$1 == name { print; exit }' "$file")"
+  if [[ -z "$line" ]]; then
+    echo "节点清单中不存在：$node_name" >&2
+    exit 1
+  fi
+  read -r _ node_host node_user node_project extra <<< "$line"
+  if [[ -n "${extra:-}" || -z "$node_host" || -z "$node_user" || -z "$node_project" ]]; then
+    echo "节点清单格式错误：$line" >&2
+    exit 1
+  fi
+  if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    ssh_cmd=(sudo -u "$SUDO_USER" ssh)
+  fi
+
+  echo "$node_name ($node_user@$node_host)"
+  "${ssh_cmd[@]}" -o StrictHostKeyChecking=accept-new "$node_user@$node_host" \
+    "socket_state=\$(systemctl is-active ssms-smb-gateway.socket 2>/dev/null || true);
+     service_state=\$(systemctl is-active ssms-smb-gateway.service 2>/dev/null || true);
+     target=\$(grep -Eo '[a-zA-Z0-9._:-]+:445' /etc/systemd/system/ssms-smb-gateway.service 2>/dev/null | tail -n 1 || true);
+     printf 'socket=%s service=%s target=%s\\n' \"\${socket_state:-unknown}\" \"\${service_state:-unknown}\" \"\${target:-unknown}\";
+     ss -H -ltn 'sport = :445' 2>/dev/null || true"
+}
+
+system_status() {
+  local unit load_state active_state
+  if ! command -v systemctl >/dev/null 2>&1; then
+    echo "当前系统不支持 systemd。" >&2
+    exit 1
+  fi
+
+  printf 'UNIT\tLOAD\tACTIVE\n'
+  for unit in \
+    storage-server.service \
+    storage-usage-sync.timer \
+    storage-agent.service \
+    ssms-smb-gateway.socket
+  do
+    load_state="$(systemctl show "$unit" -p LoadState --value 2>/dev/null || true)"
+    active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+    printf '%s\t%s\t%s\n' "$unit" "${load_state:-not-found}" "${active_state:-inactive}"
+  done
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 1
+fi
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+if [[ "$1" == "help" ]]; then
+  if [[ $# -eq 1 ]]; then
+    usage
+  else
+    group_usage "$2"
+  fi
+  exit 0
+fi
+
+RESOURCE="$1"
+shift
+if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
+  group_usage "$RESOURCE"
+  exit 0
+fi
+ACTION="$1"
+shift
+
+resolve_project_root
+
+case "$RESOURCE:$ACTION" in
+  node:join)
+    run_privileged_script join_node.sh "$@"
+    ;;
+  node:leave)
+    run_privileged_script leave_node.sh "$@"
+    ;;
+  node:list)
+    [[ $# -eq 0 ]] || { echo "node list 不接受额外参数。" >&2; exit 1; }
+    list_nodes
+    ;;
+  user:create)
+    run_privileged_script sync_user.sh "$@"
+    ;;
+  user:delete)
+    run_privileged_script sync_delete_user.sh "$@"
+    ;;
+  user:request-create)
+    run_as_invoking_user request_user_sync.sh "$@"
+    ;;
+  user:request-delete)
+    run_as_invoking_user request_user_delete.sh "$@"
+    ;;
+  quota:enable|quota:set|quota:report)
+    run_privileged_script quota_manager.sh "$ACTION" "$@"
+    ;;
+  gateway:deploy)
+    run_privileged_script deploy_smb_gateways.sh "$@"
+    ;;
+  gateway:install)
+    run_privileged_script install_smb_gateway.sh "$@"
+    ;;
+  gateway:uninstall)
+    run_privileged_script install_smb_gateway.sh --uninstall "$@"
+    ;;
+  gateway:status)
+    if [[ $# -eq 0 ]]; then
+      local_gateway_status
+    elif [[ $# -eq 1 ]]; then
+      remote_gateway_status "$1"
+    else
+      echo "用法：ssmsctl gateway status [NODE_NAME]" >&2
+      exit 1
+    fi
+    ;;
+  usage:sync)
+    require_root "$@"
+    run_script backend_sync.sh sync-usage --format-summary "$@"
+    ;;
+  usage:report)
+    run_privileged_script storage_usage_report.sh "$@"
+    ;;
+  backend:health)
+    [[ $# -eq 0 ]] || { echo "backend health 不接受额外参数。" >&2; exit 1; }
+    run_script backend_sync.sh health
+    ;;
+  system:status)
+    [[ $# -eq 0 ]] || { echo "system status 不接受额外参数。" >&2; exit 1; }
+    system_status
+    ;;
+  system:check)
+    [[ $# -eq 0 ]] || { echo "system check 不接受额外参数。" >&2; exit 1; }
+    run_as_invoking_user check_project.sh
+    ;;
+  *)
+    echo "未知命令：$RESOURCE $ACTION" >&2
+    group_usage "$RESOURCE" >&2
+    exit 1
+    ;;
+esac

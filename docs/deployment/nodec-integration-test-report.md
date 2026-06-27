@@ -29,6 +29,7 @@ NodeC 项目目录：/home/nodec1/ServerStorageManagementSystem
 15. join_node.sh 可以在接入 NodeC 时自动安装并检查 SMB Gateway。
 16. leave_node.sh 已完成 NodeC 实机退出测试，Gateway、Agent、同步 sudoers、
     双向 SSH key、节点清单和后台记录均成功清理。
+17. ssmsctl 已安装到 Storage Server，后台、Agent、用量定时器和健康检查正常。
 ```
 
 ## 测试中发现并修复的问题
@@ -99,6 +100,54 @@ Storage Server 启动后 30 秒执行首次用量同步
 
 项目检查已通过；部署后预期最迟约 1 分 30 秒在页面看到变化。
 
+### 11. 运维入口分散
+
+节点、用户、配额、Gateway、用量同步和系统检查原先需要分别记忆多个脚本。
+现新增统一命令 `ssmsctl`，保留原脚本作为底层实现，支持：
+
+```text
+ssmsctl node ...
+ssmsctl user ...
+ssmsctl quota ...
+ssmsctl gateway ...
+ssmsctl usage ...
+ssmsctl backend ...
+ssmsctl system ...
+```
+
+Storage Server、管理后台和节点客户端安装脚本都会将其安装到
+`/usr/local/bin/ssmsctl`。
+
+## ssmsctl Storage Server 实测
+
+在 Storage Server 更新项目并重新执行 `install_management_server.sh` 后，
+`ssmsctl` 成功安装。实际状态如下：
+
+```text
+storage-server.service        loaded  active
+storage-usage-sync.timer      loaded  active
+storage-agent.service         loaded  active
+ssms-smb-gateway.socket       not-found inactive
+```
+
+Storage Server 本机不安装节点 Gateway，因此最后一项为 `not-found` 符合预期。
+后台健康检查返回：
+
+```json
+{"status":"ok"}
+```
+
+一分钟用量同步定时器已生效，最近一次同步服务以 `status=0/SUCCESS` 完成：
+
+```text
+alice       15015936 bytes
+bob         813105152 bytes
+nodeverify  20480 bytes
+testsync    16384 bytes
+```
+
+其中 bob 约 700 MB 测试文件的用量已正确写入管理后台。
+
 ## NodeC 生命周期实测
 
 ### 重新加入
@@ -132,12 +181,25 @@ NodeC 的 SMB 网关已停止并卸载。
 
 退出流程执行完成且未报错，验证了 Gateway 会随节点生命周期自动卸载。
 
+## ssmsctl NodeC 待回归
+
+NodeC 当前处于已退出状态。下一步使用统一命令重新加入：
+
+```bash
+sudo ssmsctl node join NodeC 192.168.1.215 nodec1
+```
+
+该步骤将验证 `ssmsctl` 对完整接入流程的参数转发，并由 `join_node.sh`
+继续完成项目复制、现有用户同步、Agent、sudoers 和 SMB Gateway 安装。
+尚未取得本次命令输出，因此暂不标记为通过。
+
 ## 后续检查命令
 
 重新加入 NodeC 后检查节点、Agent 和 Gateway：
 
 ```bash
-grep NodeC /etc/ssms/nodes.conf
+ssmsctl node list
+ssmsctl gateway status NodeC
 ssh nodec1@192.168.1.215 'systemctl is-active storage-agent'
 ssh nodec1@192.168.1.215 \
   'systemctl is-active ssms-smb-gateway.socket; sudo ss -ltnp "sport = :445"'

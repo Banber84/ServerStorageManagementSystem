@@ -64,6 +64,7 @@ cp -R \
   "$APP_DIR/"
 
 install -m 0755 "$PROJECT_ROOT/bin/storage-server" /usr/local/bin/storage-server
+install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl
 "$PROJECT_ROOT/scripts/apply_site_config.sh" --config "$SITE_CONFIG" --output-dir /etc/ssms
 install -m 0644 "$PROJECT_ROOT/configs/storage-server.service" /etc/systemd/system/storage-server.service
 install -m 0644 "$PROJECT_ROOT/configs/storage-usage-sync.service" /etc/systemd/system/storage-usage-sync.service
@@ -79,6 +80,7 @@ cat <<EOF
 管理后台安装完成。
 
 运行目录：$APP_DIR
+统一管理命令：ssmsctl --help
 服务状态：sudo systemctl status storage-server
 用量定时器：sudo systemctl status storage-usage-sync.timer
 健康检查：curl http://127.0.0.1:8080/api/health
