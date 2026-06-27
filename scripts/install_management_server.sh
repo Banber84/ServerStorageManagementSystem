@@ -18,6 +18,7 @@ usage() {
     3. 安装 bin/storage-server 到 /usr/local/bin/storage-server
     4. 根据 configs/site.env 生成 /etc/ssms/storage-server.env
     5. 安装并启动 storage-server.service
+    6. 安装并启动 storage-usage-sync.timer
 
 执行前请先在仓库根目录编译：
   go build -o bin/storage-server ./server
@@ -65,14 +66,19 @@ cp -R \
 install -m 0755 "$PROJECT_ROOT/bin/storage-server" /usr/local/bin/storage-server
 "$PROJECT_ROOT/scripts/apply_site_config.sh" --config "$SITE_CONFIG" --output-dir /etc/ssms
 install -m 0644 "$PROJECT_ROOT/configs/storage-server.service" /etc/systemd/system/storage-server.service
+install -m 0644 "$PROJECT_ROOT/configs/storage-usage-sync.service" /etc/systemd/system/storage-usage-sync.service
+install -m 0644 "$PROJECT_ROOT/configs/storage-usage-sync.timer" /etc/systemd/system/storage-usage-sync.timer
 
 systemctl daemon-reload
-systemctl enable --now storage-server
+systemctl enable storage-server
+systemctl restart storage-server
+systemctl enable --now storage-usage-sync.timer
 
 cat <<EOF
 管理后台安装完成。
 
 运行目录：$APP_DIR
 服务状态：sudo systemctl status storage-server
+用量定时器：sudo systemctl status storage-usage-sync.timer
 健康检查：curl http://127.0.0.1:8080/api/health
 EOF

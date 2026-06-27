@@ -16,6 +16,7 @@ usage() {
   scripts/backend_sync.sh update-quota USERNAME QUOTA_GB
   scripts/backend_sync.sh sync-usage [--format-summary]
   scripts/backend_sync.sh delete-user USERNAME
+  scripts/backend_sync.sh delete-server NODE_NAME
 
 说明：
   该脚本只同步 Go 管理后台数据库，不创建或删除 Linux/Samba 系统用户。
@@ -88,6 +89,26 @@ user_id_by_username() {
   curl_api "$API_BASE/api/users" | awk -v username="$username" '
     BEGIN {
       pattern = "\"username\":\"" username "\""
+    }
+    {
+      text = $0
+      while (match(text, /\{[^{}]*\}/)) {
+        obj = substr(text, RSTART, RLENGTH)
+        if (index(obj, pattern) > 0 && match(obj, /"id":[0-9]+/)) {
+          print substr(obj, RSTART + 5, RLENGTH - 5)
+          exit
+        }
+        text = substr(text, RSTART + RLENGTH)
+      }
+    }
+  '
+}
+
+server_id_by_name() {
+  local node_name="$1"
+  curl_api "$API_BASE/api/servers" | awk -v node_name="$node_name" '
+    BEGIN {
+      pattern = "\"name\":\"" node_name "\""
     }
     {
       text = $0
@@ -206,6 +227,25 @@ delete_user_backend() {
   echo "后台用户已删除：$username"
 }
 
+delete_server_backend() {
+  local node_name="$1"
+  local server_id
+
+  if [[ ! "$node_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "节点名非法：$node_name"
+    exit 1
+  fi
+
+  server_id="$(server_id_by_name "$node_name")"
+  if [[ -z "$server_id" ]]; then
+    echo "后台节点不存在：$node_name"
+    exit 0
+  fi
+
+  curl_api -X DELETE "$API_BASE/api/servers/$server_id" >/dev/null
+  echo "后台节点已删除：$node_name"
+}
+
 case "$COMMAND" in
   health)
     curl_api "$API_BASE/api/health"
@@ -234,6 +274,13 @@ case "$COMMAND" in
       exit 1
     fi
     delete_user_backend "$1"
+    ;;
+  delete-server)
+    if [[ $# -ne 1 ]]; then
+      usage
+      exit 1
+    fi
+    delete_server_backend "$1"
     ;;
   *)
     echo "未知命令：$COMMAND"

@@ -168,6 +168,15 @@ sudo systemctl enable --now storage-server
 sudo systemctl status storage-server
 ```
 
+安装脚本还会启用 `storage-usage-sync.timer`，默认每 5 分钟把实际目录用量
+同步到管理后台：
+
+```bash
+systemctl list-timers storage-usage-sync.timer
+sudo systemctl start storage-usage-sync.service
+journalctl -u storage-usage-sync.service
+```
+
 查看日志：
 
 ```bash

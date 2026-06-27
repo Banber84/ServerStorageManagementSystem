@@ -270,6 +270,13 @@ func (s *Store) UpsertServerReport(req models.ServerReportRequest) (models.Serve
 	if name == "" {
 		return models.ServerStatus{}, errors.New("name is required")
 	}
+
+	previous, previousErr := s.GetServerByName(name)
+	isNew := errors.Is(previousErr, sql.ErrNoRows)
+	if previousErr != nil && !isNew {
+		return models.ServerStatus{}, previousErr
+	}
+
 	_, err := s.db.Exec(
 		`INSERT INTO servers (name, address, cpu_usage, memory_usage, disk_usage, online, last_seen, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -290,11 +297,20 @@ func (s *Store) UpsertServerReport(req models.ServerReportRequest) (models.Serve
 	if err != nil {
 		return models.ServerStatus{}, err
 	}
-	_, _ = s.db.Exec(
-		`INSERT INTO logs (type, server_name, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
-		name,
-		"received server status report",
-	)
+
+	message := ""
+	if isNew {
+		message = "node registered"
+	} else if !previous.Online || time.Since(previous.LastSeen) > ServerOfflineThreshold {
+		message = "node back online"
+	}
+	if message != "" {
+		_, _ = s.db.Exec(
+			`INSERT INTO logs (type, server_name, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
+			name,
+			message,
+		)
+	}
 	return s.GetServerByName(name)
 }
 

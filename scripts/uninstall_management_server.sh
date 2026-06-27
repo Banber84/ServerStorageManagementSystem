@@ -15,9 +15,10 @@ usage() {
 
 默认会执行：
   1. 停止并禁用 storage-server.service
-  2. 删除 /etc/systemd/system/storage-server.service
-  3. 删除 /usr/local/bin/storage-server
-  4. 删除 /opt/ssms 发布目录
+  2. 停止并禁用 storage-usage-sync.timer
+  3. 删除对应 systemd 单元
+  4. 删除 /usr/local/bin/storage-server
+  5. 删除 /opt/ssms 发布目录
 
 默认保留：
   - /var/lib/ssms 数据库
@@ -83,8 +84,11 @@ remove_dir() {
 }
 
 systemctl disable --now storage-server >/dev/null 2>&1 || true
+systemctl disable --now storage-usage-sync.timer >/dev/null 2>&1 || true
 
 rm -f /etc/systemd/system/storage-server.service
+rm -f /etc/systemd/system/storage-usage-sync.service
+rm -f /etc/systemd/system/storage-usage-sync.timer
 rm -f /usr/local/bin/storage-server
 remove_dir "$APP_DIR"
 
@@ -100,12 +104,15 @@ fi
 
 systemctl daemon-reload
 systemctl reset-failed storage-server >/dev/null 2>&1 || true
+systemctl reset-failed storage-usage-sync.service >/dev/null 2>&1 || true
 
 cat <<EOF
 管理后台清理完成。
 
 已清理：
   storage-server.service
+  storage-usage-sync.service
+  storage-usage-sync.timer
   /usr/local/bin/storage-server
   $APP_DIR
 

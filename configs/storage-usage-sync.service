@@ -1,0 +1,14 @@
+[Unit]
+Description=Synchronize SSMS storage usage to management database
+After=network-online.target storage-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ssms
+ExecStart=/opt/ssms/scripts/backend_sync.sh sync-usage --format-summary
+User=root
+Group=root
+Nice=10
+NoNewPrivileges=true
+

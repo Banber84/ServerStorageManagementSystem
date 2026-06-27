@@ -3,10 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+NODES_CONFIG_LIB="$SCRIPT_DIR/lib/nodes_config.sh"
 CONFIG_FILE="${CONFIG_FILE:-/etc/ssms/system.conf}"
 if [[ ! -f "$CONFIG_FILE" ]]; then
   CONFIG_FILE="$PROJECT_ROOT/configs/system.conf"
 fi
+if [[ ! -f "$NODES_CONFIG_LIB" ]]; then
+  echo "缺少节点配置函数库：$NODES_CONFIG_LIB" >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$NODES_CONFIG_LIB"
 
 usage() {
   cat <<'EOF'
@@ -27,8 +34,11 @@ usage() {
   --storage-user USER      Storage Server SSH 用户，默认 sudo 发起用户
   --storage-host HOST      Storage Server 地址，默认读取 STORAGE_SERVER
   --storage-project DIR    Storage Server 项目目录，默认当前项目目录
+  --management-url URL     管理后台地址，默认读取 backend.conf
+  --agent-binary PATH      storage-agent 二进制路径
   --skip-copy              不复制项目文件到新节点
   --skip-install           不执行 install_node_client.sh
+  --skip-agent             不安装或更新 storage-agent
   --skip-existing-users    不把 Storage Server 的现有用户补建到新节点
 
 示例：
@@ -66,8 +76,11 @@ fi
 STORAGE_HOST="${STORAGE_SERVER:-}"
 STORAGE_PROJECT_DIR="$PROJECT_ROOT"
 NODE_PROJECT_DIR="/home/$NODE_USER/ServerStorageManagementSystem"
+MANAGEMENT_URL=""
+AGENT_BINARY=""
 SKIP_COPY="0"
 SKIP_INSTALL="0"
+SKIP_AGENT="0"
 SYNC_EXISTING_USERS="1"
 
 while [[ $# -gt 0 ]]; do
@@ -88,12 +101,24 @@ while [[ $# -gt 0 ]]; do
       STORAGE_PROJECT_DIR="$2"
       shift 2
       ;;
+    --management-url)
+      MANAGEMENT_URL="$2"
+      shift 2
+      ;;
+    --agent-binary)
+      AGENT_BINARY="$2"
+      shift 2
+      ;;
     --skip-copy)
       SKIP_COPY="1"
       shift
       ;;
     --skip-install)
       SKIP_INSTALL="1"
+      shift
+      ;;
+    --skip-agent)
+      SKIP_AGENT="1"
       shift
       ;;
     --skip-existing-users)
@@ -124,6 +149,23 @@ fi
 
 if [[ -z "$STORAGE_USER" || -z "$STORAGE_HOST" || -z "$STORAGE_PROJECT_DIR" ]]; then
   echo "Storage Server 连接信息不完整，请使用 --storage-user、--storage-host、--storage-project 指定。"
+  exit 1
+fi
+
+if [[ -z "$MANAGEMENT_URL" ]]; then
+  BACKEND_CONFIG_FILE="/etc/ssms/backend.conf"
+  if [[ ! -f "$BACKEND_CONFIG_FILE" ]]; then
+    BACKEND_CONFIG_FILE="$PROJECT_ROOT/configs/backend.conf"
+  fi
+  if [[ -f "$BACKEND_CONFIG_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$BACKEND_CONFIG_FILE"
+    MANAGEMENT_URL="${BACKEND_API_BASE:-}"
+  fi
+fi
+MANAGEMENT_URL="${MANAGEMENT_URL:-http://$STORAGE_HOST:8080}"
+if [[ ! "$MANAGEMENT_URL" =~ ^https?://[^[:space:]]+$ ]]; then
+  echo "管理后台地址非法：$MANAGEMENT_URL"
   exit 1
 fi
 
@@ -175,18 +217,32 @@ ensure_local_ssh_key() {
 }
 
 write_nodes_conf() {
-  local tmp
+  local tmp source_file runtime_file
+  runtime_file="/etc/ssms/nodes.conf"
+  source_file="$PROJECT_ROOT/configs/nodes.conf"
+  if [[ -f "$runtime_file" ]]; then
+    source_file="$runtime_file"
+  fi
+
   tmp="$(mktemp)"
-  if [[ -f "$PROJECT_ROOT/configs/nodes.conf" ]]; then
+  if [[ -f "$source_file" ]]; then
     awk -v name="$NODE_NAME" -v host="$NODE_HOST" '
       /^#/ || NF == 0 { print; next }
       $1 == name || $2 == host { next }
       { print }
-    ' "$PROJECT_ROOT/configs/nodes.conf" > "$tmp"
+    ' "$source_file" > "$tmp"
   fi
   printf '%s %s %s %s\n' "$NODE_NAME" "$NODE_HOST" "$NODE_USER" "$NODE_PROJECT_DIR" >> "$tmp"
+
+  install -d -m 0755 /etc/ssms
   install -m 0644 "$tmp" "$PROJECT_ROOT/configs/nodes.conf"
+  install -m 0644 "$tmp" "$runtime_file"
   rm -f "$tmp"
+}
+
+write_site_nodes() {
+  local site_file="$PROJECT_ROOT/configs/site.env"
+  ssms_sync_site_nodes "$site_file" "$PROJECT_ROOT/configs/nodes.conf"
 }
 
 write_sync_conf() {
@@ -270,6 +326,63 @@ install_node_client() {
     "cd '$NODE_PROJECT_DIR' && sudo scripts/install_node_client.sh"
 }
 
+prepare_agent_binary() {
+  if [[ -n "$AGENT_BINARY" ]]; then
+    if [[ ! -x "$AGENT_BINARY" ]]; then
+      echo "指定的 Agent 可执行文件不存在或不可执行：$AGENT_BINARY"
+      return 1
+    fi
+    return
+  fi
+
+  if [[ -x "$PROJECT_ROOT/bin/storage-agent" ]]; then
+    AGENT_BINARY="$PROJECT_ROOT/bin/storage-agent"
+    return
+  fi
+  if [[ -x /usr/local/bin/storage-agent ]]; then
+    AGENT_BINARY="/usr/local/bin/storage-agent"
+    return
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    echo "缺少 storage-agent 二进制且未安装 Go；可使用 --agent-binary 指定或 --skip-agent 跳过。"
+    return 1
+  fi
+
+  echo "编译 storage-agent。"
+  install -d -o "$STORAGE_USER" -g "$(id -gn "$STORAGE_USER")" -m 0755 "$PROJECT_ROOT/bin"
+  (
+    cd "$PROJECT_ROOT"
+    sudo -u "$STORAGE_USER" go build -o "$PROJECT_ROOT/bin/storage-agent" ./agent
+  )
+  AGENT_BINARY="$PROJECT_ROOT/bin/storage-agent"
+}
+
+node_agent_ready() {
+  "${SSH_CMD[@]}" -n "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "systemctl is-active --quiet storage-agent &&
+     grep -qxF 'SSMS_SERVER_URL=$MANAGEMENT_URL' /etc/ssms/storage-agent.env &&
+     grep -qxF 'SSMS_AGENT_NAME=$NODE_NAME' /etc/ssms/storage-agent.env &&
+     grep -qxF 'SSMS_AGENT_ADDRESS=$NODE_HOST' /etc/ssms/storage-agent.env"
+}
+
+install_node_agent() {
+  local remote_binary="/tmp/ssms-storage-agent"
+
+  prepare_agent_binary
+  "${SCP_CMD[@]}" "${SSH_OPTS[@]}" "$AGENT_BINARY" "$NODE_TARGET:$remote_binary"
+  echo "安装 $NODE_NAME 监控 Agent；若出现 sudo 提示，请输入 $NODE_USER 的登录密码。"
+  "${SSH_CMD[@]}" -tt "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "cd '$NODE_PROJECT_DIR' &&
+     sudo scripts/install_node_agent.sh \
+       --binary '$remote_binary' \
+       --server-url '$MANAGEMENT_URL' \
+       --name '$NODE_NAME' \
+       --address '$NODE_HOST';
+     status=\$?;
+     rm -f '$remote_binary';
+     exit \$status"
+}
+
 configure_ssh_keys() {
   local storage_pub node_pub
   storage_pub="$(ensure_local_ssh_key "$STORAGE_USER")"
@@ -347,6 +460,7 @@ sync_existing_users() {
 
 echo "接入新节点：$NODE_NAME ($NODE_TARGET)"
 write_nodes_conf
+write_site_nodes
 write_sync_conf
 write_storage_sudoers
 configure_ssh_keys
@@ -361,6 +475,14 @@ if [[ "$SKIP_INSTALL" == "0" ]]; then
   install_node_client
 fi
 
+if [[ "$SKIP_AGENT" == "0" ]]; then
+  if node_agent_ready; then
+    echo "$NODE_NAME 的 storage-agent 已正确运行，跳过重复安装。"
+  else
+    install_node_agent
+  fi
+fi
+
 if node_sudoers_ready; then
   echo "$NODE_NAME 的同步 sudoers 已配置，跳过重复写入。"
 else
@@ -373,4 +495,5 @@ fi
 
 echo "新节点接入完成：$NODE_NAME"
 echo "节点清单：$PROJECT_ROOT/configs/nodes.conf"
+echo "运行时节点清单：/etc/ssms/nodes.conf"
 echo "节点可发起同步：$NODE_PROJECT_DIR/scripts/request_user_sync.sh USERNAME --quota-gb 1"

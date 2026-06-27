@@ -90,6 +90,29 @@ func TestStoreManagementFlow(t *testing.T) {
 		t.Fatal("server should be online")
 	}
 
+	if _, err := store.UpsertServerReport(models.ServerReportRequest{
+		Name:        "NodeA",
+		Address:     "192.168.1.21",
+		CPUUsage:    12,
+		MemoryUsage: 46,
+		DiskUsage:   61,
+	}); err != nil {
+		t.Fatalf("repeat server report: %v", err)
+	}
+	logs, err := store.ListLogs(100)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	nodeRegistrationLogs := 0
+	for _, entry := range logs {
+		if entry.ServerName == "NodeA" && entry.Message == "node registered" {
+			nodeRegistrationLogs++
+		}
+	}
+	if nodeRegistrationLogs != 1 {
+		t.Fatalf("repeated report should not create another system log: %#v", logs)
+	}
+
 	if _, err := store.CreateLog(models.CreateLogRequest{
 		Type:       "login",
 		Username:   "alice",

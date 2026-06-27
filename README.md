@@ -159,9 +159,12 @@ ServerStorageManagementSystem/
 │   ├── delete_user.sh
 │   ├── apply_site_config.sh
 │   ├── install_management_server.sh
+│   ├── install_node_agent.sh
 │   ├── install_node_client.sh
 │   ├── install_storage_agent.sh
 │   ├── install_storage_server.sh
+│   ├── join_node.sh
+│   ├── leave_node.sh
 │   ├── quota_manager.sh
 │   ├── request_user_delete.sh
 │   ├── request_user_sync.sh
