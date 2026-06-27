@@ -11,7 +11,7 @@ fi
 usage() {
   cat <<'EOF'
 用法：
-  sudo scripts/sync_user.sh USERNAME [--quota-gb GB] [--nodes-file PATH] [--storage-only] [--nodes-only] [--password-stdin]
+  sudo scripts/sync_user.sh USERNAME [--quota-gb GB] [--nodes-file PATH] [--storage-only] [--nodes-only] [--password-stdin] [--no-backend]
 
 在 Storage Server 上创建/更新 Samba 存储用户，并同步到 nodes.conf 中的登录节点。
 同步到节点后，用户下次登录节点时由 pam_mount 自动挂载个人目录。
@@ -53,6 +53,7 @@ fi
 SYNC_STORAGE="1"
 SYNC_NODES="1"
 PASSWORD_STDIN="0"
+SYNC_BACKEND="1"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -74,6 +75,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --password-stdin)
       PASSWORD_STDIN="1"
+      shift
+      ;;
+    --no-backend)
+      SYNC_BACKEND="0"
       shift
       ;;
     -h|--help)
@@ -149,6 +154,17 @@ if [[ "$SYNC_NODES" == "1" ]]; then
     printf '%s\n' "$PASSWORD" | "${SSH_CMD[@]}" "$SSH_USER@$NODE_HOST" \
       "sudo $REMOTE_SCRIPT_Q $USERNAME_Q --password-stdin"
   done < "$NODES_FILE"
+fi
+
+if [[ "$SYNC_BACKEND" == "1" ]]; then
+  if "$SCRIPT_DIR/backend_sync.sh" health >/dev/null 2>&1; then
+    "$SCRIPT_DIR/backend_sync.sh" upsert-user "$USERNAME" "$QUOTA_GB"
+    if [[ "$SYNC_STORAGE" == "1" ]]; then
+      "$SCRIPT_DIR/backend_sync.sh" sync-usage --format-summary || true
+    fi
+  else
+    echo "后台 API 不可用，已跳过后台同步。"
+  fi
 fi
 
 echo "用户同步完成：$USERNAME"

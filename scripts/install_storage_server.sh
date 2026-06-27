@@ -23,6 +23,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y samba smbclient quota acl
 
 install -d -m 0755 /etc/ssms
 install -m 0644 "$CONFIG_FILE" /etc/ssms/system.conf
+if [[ -f "$PROJECT_ROOT/configs/backend.conf" ]]; then
+  install -m 0644 "$PROJECT_ROOT/configs/backend.conf" /etc/ssms/backend.conf
+fi
 
 if ! getent group "$STORAGE_GROUP" >/dev/null; then
   groupadd --system "$STORAGE_GROUP"

@@ -118,6 +118,65 @@ NodeA 192.168.1.188 nodea1 /home/nodea1/ServerStorageManagementSystem
 NodeB 192.168.1.189 nodeb1 /home/nodeb1/ServerStorageManagementSystem
 ```
 
+## 一键接入新节点
+
+如果要加入一台新的登录节点，推荐在 Storage Server 上执行：
+
+```bash
+sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1
+```
+
+该脚本会完成：
+
+```text
+1. 将 nodeC 写入 configs/nodes.conf。
+2. 更新 configs/sync.conf 中的 Storage Server 连接信息。
+3. 将 configs、scripts、docs/deployment 复制到新节点项目目录。
+4. 在新节点执行 install_node_client.sh。
+5. 配置 Storage Server 到新节点的 SSH key。
+6. 配置新节点到 Storage Server 的 SSH key。
+7. 配置 Storage Server 和新节点两边的 sudoers 免密同步命令。
+8. 验证创建和删除同步脚本可以远程调用。
+```
+
+默认新节点项目目录为：
+
+```text
+/home/节点用户/ServerStorageManagementSystem
+```
+
+如果项目目录不同：
+
+```bash
+sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1 \
+  --node-project /home/nodec1/ServerStorageManagementSystem
+```
+
+如果 Storage Server 的 SSH 用户或项目目录不同：
+
+```bash
+sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1 \
+  --storage-user a2 \
+  --storage-host 192.168.1.187 \
+  --storage-project /home/a2/ServerStorageManagementSystem
+```
+
+脚本执行过程中，如果新节点还没有配置 SSH key，第一次连接可能需要输入新节点用户密码；如果新节点需要执行 `sudo install_node_client.sh`，也可能需要输入新节点用户的 sudo 密码。
+
+接入完成后，可以直接测试从新节点发起创建：
+
+```bash
+ssh nodec1@192.168.1.130
+cd ~/ServerStorageManagementSystem
+scripts/request_user_sync.sh joincheck --quota-gb 1
+```
+
+也可以测试从 Storage Server 发起同步到所有节点：
+
+```bash
+sudo scripts/sync_user.sh joincheck2 --quota-gb 1
+```
+
 ## 同步创建用户
 
 在 Storage Server 上执行：

@@ -66,6 +66,52 @@ curl -X POST http://192.168.1.187:8080/api/storage/username \
 used_bytes = used_kb * 1024
 ```
 
+## 自动同步脚本
+
+项目提供统一的后台同步脚本：
+
+```bash
+scripts/backend_sync.sh health
+sudo scripts/backend_sync.sh upsert-user alice 1
+sudo scripts/backend_sync.sh sync-usage --format-summary
+sudo scripts/backend_sync.sh delete-user alice
+```
+
+配置文件：
+
+```text
+configs/backend.conf
+/etc/ssms/backend.conf
+```
+
+默认配置：
+
+```text
+BACKEND_API_BASE="http://192.168.1.187:8080"
+BACKEND_SYNC_ENABLED="1"
+BACKEND_API_TIMEOUT="5"
+```
+
+`sync_user.sh` 创建或更新系统用户成功后，会自动调用：
+
+```bash
+scripts/backend_sync.sh upsert-user USERNAME QUOTA_GB
+scripts/backend_sync.sh sync-usage --format-summary
+```
+
+`sync_delete_user.sh` 删除系统用户成功后，会自动调用：
+
+```bash
+scripts/backend_sync.sh delete-user USERNAME
+```
+
+如果临时不想同步后台，可以使用：
+
+```bash
+sudo scripts/sync_user.sh alice --quota-gb 1 --no-backend
+sudo scripts/sync_delete_user.sh alice --no-backend
+```
+
 ## 节点约定
 
 每台登录节点都需要创建与 Samba 用户同名的本地 Linux 用户，并保持登录密码与 Samba 密码一致。用户登录后的 CIFS 挂载由 `pam_mount` 完成，agentB 不需要直接处理挂载逻辑。
@@ -98,4 +144,4 @@ sudo scripts/sync_delete_user.sh alice
 scripts/request_user_delete.sh alice
 ```
 
-删除同步只处理 Linux/Samba 系统用户和目录归档。agentB 后台数据库中的用户记录仍建议通过 Web 页面或 REST API 删除，避免系统删除和后台审计记录混在一起。
+删除同步会优先处理 Linux/Samba 系统用户和目录归档；如果后台 API 可用，`sync_delete_user.sh` 会同步删除 agentB 后台数据库中的用户记录。如果后台 API 不可用，脚本会跳过后台同步，系统用户删除不受影响。

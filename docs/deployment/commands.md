@@ -14,6 +14,7 @@ sudo systemctl status ssh
 ```bash
 sudo scripts/install_storage_server.sh
 sudo scripts/quota_manager.sh enable
+sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1
 sudo scripts/create_user.sh alice --quota-gb 10
 sudo scripts/sync_user.sh alice --quota-gb 10
 sudo scripts/sync_delete_user.sh alice

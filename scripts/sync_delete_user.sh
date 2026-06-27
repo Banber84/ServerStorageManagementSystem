@@ -11,7 +11,7 @@ fi
 usage() {
   cat <<'EOF'
 用法：
-  sudo scripts/sync_delete_user.sh USERNAME [--nodes-file PATH] [--storage-only] [--nodes-only] [--keep-data] [--keep-node-home]
+  sudo scripts/sync_delete_user.sh USERNAME [--nodes-file PATH] [--storage-only] [--nodes-only] [--keep-data] [--keep-node-home] [--no-backend]
 
 在 Storage Server 上删除 Samba/Linux 存储用户，并同步删除 nodes.conf 中登录节点上的同名本地用户。
 默认行为：
@@ -52,6 +52,7 @@ SYNC_STORAGE="1"
 SYNC_NODES="1"
 KEEP_DATA="0"
 KEEP_NODE_HOME="0"
+SYNC_BACKEND="1"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -73,6 +74,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --keep-node-home)
       KEEP_NODE_HOME="1"
+      shift
+      ;;
+    --no-backend)
+      SYNC_BACKEND="0"
       shift
       ;;
     -h|--help)
@@ -132,6 +137,14 @@ if [[ "$SYNC_NODES" == "1" ]]; then
     "${SSH_CMD[@]}" "$SSH_USER@$NODE_HOST" \
       "sudo $REMOTE_SCRIPT_Q $USERNAME_Q ${NODE_ARGS[*]}"
   done < "$NODES_FILE"
+fi
+
+if [[ "$SYNC_BACKEND" == "1" ]]; then
+  if "$SCRIPT_DIR/backend_sync.sh" health >/dev/null 2>&1; then
+    "$SCRIPT_DIR/backend_sync.sh" delete-user "$USERNAME"
+  else
+    echo "后台 API 不可用，已跳过后台同步。"
+  fi
 fi
 
 echo "用户删除同步完成：$USERNAME"
