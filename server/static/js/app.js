@@ -33,20 +33,18 @@
   };
 
   const levelMap = {
-    success: ["login", "mount", "sync", "create", "online"],
-    warning: ["warning", "warn", "offline", "quota"],
-    danger: ["error", "fail", "failed", "delete", "remove"],
+    warn: ["warning", "warn", "offline", "quota"],
+    error: ["error", "fail", "failed", "delete", "remove"],
   };
 
   function logLevel(type, message) {
     const text = `${type || ""} ${message || ""}`.toLowerCase();
-    if (levelMap.danger.some((key) => text.includes(key))) return ["danger", "严重"];
-    if (levelMap.warning.some((key) => text.includes(key))) return ["warning", "警告"];
-    if (levelMap.success.some((key) => text.includes(key))) return ["success", "正常"];
-    return ["info", "信息"];
+    if (levelMap.error.some((key) => text.includes(key))) return ["danger", "ERROR"];
+    if (levelMap.warn.some((key) => text.includes(key))) return ["warning", "WARN"];
+    return ["info", "INFO"];
   }
 
-  document.querySelectorAll("[data-log-type]").forEach((node) => {
+  document.querySelectorAll("[data-log-type-label]").forEach((node) => {
     const raw = node.dataset.logType || "";
     const key = raw.toLowerCase();
     node.textContent = labelMap[key] || raw || "未分类";
