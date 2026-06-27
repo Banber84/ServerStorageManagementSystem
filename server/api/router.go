@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,10 +25,12 @@ func NewRouter(store *service.Store) *gin.Engine {
 
 	router := gin.Default()
 	router.SetFuncMap(map[string]any{
-		"formatMB":   formatMB,
-		"quotaMB":    quotaMB,
-		"quotaUnit":  quotaUnit,
-		"quotaValue": quotaValue,
+		"formatMB":      formatMB,
+		"formatTime":    formatTime,
+		"formatTimeISO": formatTimeISO,
+		"quotaMB":       quotaMB,
+		"quotaUnit":     quotaUnit,
+		"quotaValue":    quotaValue,
 	})
 	router.LoadHTMLGlob("server/templates/*.html")
 	router.Static("/static", "server/static")
@@ -346,6 +349,22 @@ func quotaValue(bytes int64) string {
 		return fmt.Sprintf("%.2f", float64(bytes)/(1024*1024*1024))
 	}
 	return quotaMB(bytes)
+}
+
+func formatTime(value time.Time) string {
+	return value.In(chinaLocation()).Format("2006-01-02 15:04:05")
+}
+
+func formatTimeISO(value time.Time) string {
+	return value.UTC().Format(time.RFC3339)
+}
+
+func chinaLocation() *time.Location {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		return time.FixedZone("Asia/Shanghai", 8*60*60)
+	}
+	return location
 }
 
 func render(ctx *gin.Context, template string, data gin.H, err error) {

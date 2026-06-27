@@ -87,7 +87,7 @@
             <article class="log-item" data-log-row data-log-type="{{ .Type }}" data-log-message="{{ .Message }}">
               <div class="log-top">
                 <strong data-log-type-label data-log-type="{{ .Type }}">{{ .Type }}</strong>
-                <time class="muted" data-time="{{ .CreatedAt.Format "2006-01-02T15:04:05Z07:00" }}">{{ .CreatedAt.Format "2006-01-02 15:04:05" }}</time>
+                <time class="muted" data-time="{{ formatTimeISO .CreatedAt }}">{{ formatTime .CreatedAt }}</time>
               </div>
               <div class="message-cell">{{ .Message }}</div>
               <div class="log-meta">

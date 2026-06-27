@@ -103,7 +103,7 @@
           <tbody>
           {{ range .Logs }}
             <tr data-log-row data-log-type="{{ .Type }}" data-log-message="{{ .Message }}">
-              <td><time data-time="{{ .CreatedAt.Format "2006-01-02T15:04:05Z07:00" }}">{{ .CreatedAt.Format "2006-01-02 15:04:05" }}</time></td>
+              <td><time data-time="{{ formatTimeISO .CreatedAt }}">{{ formatTime .CreatedAt }}</time></td>
               <td><span data-log-level>INFO</span></td>
               <td><span class="badge info" data-log-type-label data-log-type="{{ .Type }}">{{ .Type }}</span></td>
               <td>{{ .Username }}</td>

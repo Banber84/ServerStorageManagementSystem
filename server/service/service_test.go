@@ -3,6 +3,7 @@ package service_test
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"server-storage-management-system/server/database"
 	"server-storage-management-system/server/models"
@@ -113,13 +114,20 @@ func TestStoreManagementFlow(t *testing.T) {
 		t.Fatalf("repeated report should not create another system log: %#v", logs)
 	}
 
-	if _, err := store.CreateLog(models.CreateLogRequest{
+	createdLog, err := store.CreateLog(models.CreateLogRequest{
 		Type:       "login",
 		Username:   "alice",
 		ServerName: "NodeA",
 		Message:    "user logged in",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("create log: %v", err)
+	}
+	if _, offset := createdLog.CreatedAt.Zone(); offset != 0 {
+		t.Fatalf("log timestamp zone offset = %d, want UTC offset 0", offset)
+	}
+	if createdLog.CreatedAt.Format("2006-01-02T15:04:05Z07:00")[19:] != "Z" {
+		t.Fatalf("log timestamp should render as UTC timestamp: %s", createdLog.CreatedAt.Format(time.RFC3339))
 	}
 
 	dashboard, err := store.Dashboard()

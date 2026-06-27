@@ -10,7 +10,7 @@ import (
 
 // Open 初始化 SQLite 连接，并在服务启动时自动完成表结构迁移。
 func Open(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path+"?_foreign_keys=on&_busy_timeout=5000")
+	db, err := sql.Open("sqlite3", path+"?_foreign_keys=on&_busy_timeout=5000&_loc=UTC")
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}

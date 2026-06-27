@@ -46,7 +46,7 @@
               <td>{{ printf "%.1f%%" .CPUUsage }}</td>
               <td>{{ printf "%.1f%%" .MemoryUsage }}</td>
               <td>{{ printf "%.1f%%" .DiskUsage }}</td>
-              <td><time data-time="{{ .LastSeen.Format "2006-01-02T15:04:05Z07:00" }}">{{ .LastSeen.Format "2006-01-02 15:04:05" }}</time></td>
+              <td><time data-time="{{ formatTimeISO .LastSeen }}">{{ formatTime .LastSeen }}</time></td>
               <td>{{ if .Online }}<span class="badge success">在线</span>{{ else }}<span class="badge muted">离线</span>{{ end }}</td>
               <td>
                 <form method="post" action="/servers/{{ .ID }}/delete" data-confirm="确认删除该节点记录？Agent 继续运行时节点会重新出现。">
