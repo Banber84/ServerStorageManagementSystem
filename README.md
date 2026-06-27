@@ -52,17 +52,25 @@ flowchart TB
     User["用户"]
     Admin["管理员"]
 
+    subgraph MainNode["主节点 / Main Node"]
+        direction TB
+        MainLogin["本机登录节点能力"]
+        Storage["Storage Server<br/>Samba / Linux Quota"]
+        Management["Web Management<br/>Go + Gin"]
+        DB["SQLite<br/>管理数据"]
+    end
+
     NodeA["NodeA<br/>登录节点"]
     NodeB["NodeB<br/>登录节点"]
-    Storage["Storage Server<br/>Samba / Linux Quota"]
-    Management["Web Management<br/>Go + Gin"]
-    DB["SQLite<br/>管理数据"]
 
+    User -->|"登录"| MainLogin
     User -->|"登录"| NodeA
     User -->|"登录"| NodeB
+    MainLogin -->|"本机访问共享目录"| Storage
     NodeA -->|"pam_mount 自动挂载"| Storage
     NodeB -->|"pam_mount 自动挂载"| Storage
-    Storage -->|"用户目录 / 配额 / 使用量"| Management
+    Storage -->|"用户目录 / 配额 / 使用量同步"| Management
+    MainLogin -->|"Agent 状态上报"| Management
     NodeA -->|"Agent 状态上报"| Management
     NodeB -->|"Agent 状态上报"| Management
     Admin -->|"Web 页面 / REST API"| Management
@@ -79,6 +87,7 @@ flowchart TB
 - 用户目录管理
 - 权限控制
 - 存储空间管理
+- 也可以作为登录节点，供用户直接登录并访问个人共享目录
 
 #### NodeA / NodeB
 
