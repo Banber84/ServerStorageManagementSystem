@@ -40,9 +40,16 @@
         <label>邮箱</label>
         <input name="email" type="email">
       </div>
-      <div class="field span-3">
-        <label>配额（Bytes）</label>
-        <input name="quota_bytes" type="number" min="1" value="1073741824" required>
+      <div class="field span-2">
+        <label>配额</label>
+        <input name="quota_value" type="number" min="1" step="0.01" value="1024" required>
+      </div>
+      <div class="field span-1">
+        <label>单位</label>
+        <select name="quota_unit">
+          <option value="MB" selected>MB</option>
+          <option value="GB">GB</option>
+        </select>
       </div>
       <div class="field span-2 action">
         <button class="btn primary" type="submit">创建用户</button>
@@ -67,7 +74,11 @@
               <td>{{ .Email }}</td>
               <td>
                 <form class="inline-form" method="post" action="/users/{{ .ID }}/quota">
-                  <input name="quota_bytes" type="number" min="1" value="{{ .QuotaBytes }}" required>
+                  <input name="quota_value" type="number" min="0.01" step="0.01" value="{{ quotaValue .QuotaBytes }}" required>
+                  <select name="quota_unit">
+                    <option value="MB" {{ if eq (quotaUnit .QuotaBytes) "MB" }}selected{{ end }}>MB</option>
+                    <option value="GB" {{ if eq (quotaUnit .QuotaBytes) "GB" }}selected{{ end }}>GB</option>
+                  </select>
                   <button class="btn ghost" type="submit">保存</button>
                 </form>
               </td>

@@ -40,11 +40,11 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">总配额</div>
-        <div class="stat-value">{{ .Dashboard.TotalQuotaBytes }} B</div>
+        <div class="stat-value">{{ formatMB .Dashboard.TotalQuotaBytes }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">已用空间</div>
-        <div class="stat-value">{{ .Dashboard.TotalUsedBytes }} B</div>
+        <div class="stat-value">{{ formatMB .Dashboard.TotalUsedBytes }}</div>
       </div>
     </section>
 

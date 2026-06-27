@@ -41,9 +41,9 @@
           {{ range .Items }}
             <tr>
               <td>{{ .Username }}</td>
-              <td>{{ .QuotaBytes }} B</td>
-              <td>{{ .UsedBytes }} B</td>
-              <td>{{ .RemainingBytes }} B</td>
+              <td>{{ formatMB .QuotaBytes }}</td>
+              <td>{{ formatMB .UsedBytes }}</td>
+              <td>{{ formatMB .RemainingBytes }}</td>
               <td class="path-cell">{{ .Path }}</td>
               <td><time data-time="{{ .ScannedAt.Format "2006-01-02T15:04:05Z07:00" }}">{{ .ScannedAt.Format "2006-01-02 15:04:05" }}</time></td>
             </tr>

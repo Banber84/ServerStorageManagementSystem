@@ -248,6 +248,10 @@ tr:last-child td {
   grid-column: span 2;
 }
 
+.field.span-1 {
+  grid-column: span 1;
+}
+
 .field.span-3 {
   grid-column: span 3;
 }
@@ -389,6 +393,7 @@ code {
   }
 
   .form-panel,
+  .field.span-1,
   .field.span-2,
   .field.span-3,
   .field.span-4,

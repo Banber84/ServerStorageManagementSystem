@@ -3,8 +3,10 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -21,6 +23,12 @@ func NewRouter(store *service.Store) *gin.Engine {
 	handler := &Handler{store: store}
 
 	router := gin.Default()
+	router.SetFuncMap(map[string]any{
+		"formatMB":   formatMB,
+		"quotaMB":    quotaMB,
+		"quotaUnit":  quotaUnit,
+		"quotaValue": quotaValue,
+	})
 	router.LoadHTMLGlob("server/templates/*.html")
 	router.Static("/static", "server/static")
 
@@ -112,10 +120,16 @@ func (h *Handler) createUser(ctx *gin.Context) {
 }
 
 func (h *Handler) createUserForm(ctx *gin.Context) {
-	var req models.CreateUserRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	quotaBytes, err := quotaBytesFromForm(ctx)
+	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return
+	}
+	req := models.CreateUserRequest{
+		Username:   ctx.PostForm("username"),
+		FullName:   ctx.PostForm("full_name"),
+		Email:      ctx.PostForm("email"),
+		QuotaBytes: quotaBytes,
 	}
 	if _, err := h.store.CreateUser(req); err != nil {
 		ctx.String(statusCode(err), err.Error())
@@ -176,9 +190,9 @@ func (h *Handler) updateQuotaForm(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	quotaBytes, err := strconv.ParseInt(ctx.PostForm("quota_bytes"), 10, 64)
+	quotaBytes, err := quotaBytesFromForm(ctx)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, "quota_bytes must be an integer")
+		ctx.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	if _, err := h.store.UpdateQuota(id, quotaBytes); err != nil {
@@ -283,6 +297,57 @@ func (h *Handler) createLogForm(ctx *gin.Context) {
 }
 
 // 响应辅助函数：集中把 service 错误转换为页面文本或 JSON 响应。
+func quotaBytesFromForm(ctx *gin.Context) (int64, error) {
+	valueText := strings.TrimSpace(ctx.PostForm("quota_value"))
+	if valueText == "" {
+		return strconv.ParseInt(strings.TrimSpace(ctx.PostForm("quota_bytes")), 10, 64)
+	}
+
+	value, err := strconv.ParseFloat(valueText, 64)
+	if err != nil || value <= 0 {
+		return 0, errors.New("quota_value must be greater than zero")
+	}
+
+	unit := strings.ToUpper(strings.TrimSpace(ctx.DefaultPostForm("quota_unit", "MB")))
+	var multiplier float64
+	switch unit {
+	case "MB":
+		multiplier = 1024 * 1024
+	case "GB":
+		multiplier = 1024 * 1024 * 1024
+	default:
+		return 0, errors.New("quota_unit must be MB or GB")
+	}
+
+	bytes := value * multiplier
+	if bytes <= 0 || bytes > float64(int64(^uint64(0)>>1)) {
+		return 0, errors.New("quota value is out of range")
+	}
+	return int64(bytes), nil
+}
+
+func formatMB(bytes int64) string {
+	return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
+}
+
+func quotaMB(bytes int64) string {
+	return fmt.Sprintf("%.2f", float64(bytes)/(1024*1024))
+}
+
+func quotaUnit(bytes int64) string {
+	if bytes > 0 && bytes%(1024*1024*1024) == 0 {
+		return "GB"
+	}
+	return "MB"
+}
+
+func quotaValue(bytes int64) string {
+	if quotaUnit(bytes) == "GB" {
+		return fmt.Sprintf("%.2f", float64(bytes)/(1024*1024*1024))
+	}
+	return quotaMB(bytes)
+}
+
 func render(ctx *gin.Context, template string, data gin.H, err error) {
 	if err != nil {
 		ctx.String(statusCode(err), err.Error())
