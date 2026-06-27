@@ -134,7 +134,7 @@ if [[ "$SYNC_NODES" == "1" ]]; then
     fi
 
     echo "同步删除节点用户：$NODE_NAME ($SSH_USER@$NODE_HOST)"
-    "${SSH_CMD[@]}" "$SSH_USER@$NODE_HOST" \
+    "${SSH_CMD[@]}" -n "$SSH_USER@$NODE_HOST" \
       "sudo $REMOTE_SCRIPT_Q $USERNAME_Q ${NODE_ARGS[*]}"
   done < "$NODES_FILE"
 fi

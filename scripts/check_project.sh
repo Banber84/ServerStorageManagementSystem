@@ -27,6 +27,7 @@ if grep -qE '/api/users/\$username/quota|/api/storage/by-username' "$PROJECT_ROO
   echo "发现已废弃的后台 API 路径。" >&2
   exit 1
 fi
+grep -qF '"${SSH_CMD[@]}" -n "$SSH_USER@$NODE_HOST"' "$PROJECT_ROOT/scripts/sync_delete_user.sh"
 
 echo "检查统一节点配置更新。"
 tmp_dir="$(mktemp -d)"

@@ -89,18 +89,17 @@ fi
 
 RUNTIME_NODES="/etc/ssms/nodes.conf"
 PROJECT_NODES="$PROJECT_ROOT/configs/nodes.conf"
-SOURCE_NODES="$PROJECT_NODES"
-if [[ -f "$RUNTIME_NODES" ]]; then
-  SOURCE_NODES="$RUNTIME_NODES"
-fi
-if [[ ! -f "$SOURCE_NODES" ]]; then
-  echo "节点清单不存在：$SOURCE_NODES" >&2
-  exit 1
-fi
-
-NODE_LINE="$(awk -v name="$NODE_NAME" '$1 == name { print; exit }' "$SOURCE_NODES")"
+NODE_LINE=""
+for source_file in "$RUNTIME_NODES" "$PROJECT_NODES"; do
+  if [[ -f "$source_file" ]]; then
+    NODE_LINE="$(awk -v name="$NODE_NAME" '$1 == name { print; exit }' "$source_file")"
+    if [[ -n "$NODE_LINE" ]]; then
+      break
+    fi
+  fi
+done
 if [[ -z "$NODE_LINE" ]]; then
-  echo "节点清单中不存在：$NODE_NAME" >&2
+  echo "运行时和项目节点清单中均不存在：$NODE_NAME" >&2
   exit 1
 fi
 read -r _ NODE_HOST NODE_USER NODE_PROJECT_DIR EXTRA <<< "$NODE_LINE"
