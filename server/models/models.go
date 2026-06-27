@@ -49,6 +49,15 @@ type LogEntry struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// LogFilter 描述日志页面和日志 API 支持的筛选条件。
+type LogFilter struct {
+	Level   string `json:"level"`
+	Type    string `json:"type"`
+	Keyword string `json:"keyword"`
+	KeyOnly bool   `json:"key_only"`
+	Limit   int    `json:"limit"`
+}
+
 // Dashboard 是首页需要的聚合视图数据。
 type Dashboard struct {
 	UserCount       int64          `json:"user_count"`

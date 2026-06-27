@@ -486,6 +486,71 @@ func (s *Store) ListLogs(limit int) ([]models.LogEntry, error) {
 	return logs, rows.Err()
 }
 
+// ListLogsFiltered 先读取最近日志，再按页面条件过滤，避免筛选依赖前端 JS。
+func (s *Store) ListLogsFiltered(filter models.LogFilter) ([]models.LogEntry, error) {
+	limit := filter.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	logs, err := s.ListLogs(200)
+	if err != nil {
+		return nil, err
+	}
+
+	level := strings.ToUpper(strings.TrimSpace(filter.Level))
+	logType := strings.ToLower(strings.TrimSpace(filter.Type))
+	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
+
+	filtered := make([]models.LogEntry, 0, len(logs))
+	for _, entry := range logs {
+		entryLevel := LogLevel(entry)
+		if level != "" && entryLevel != level {
+			continue
+		}
+		if filter.KeyOnly && entryLevel != "WARN" && entryLevel != "ERROR" {
+			continue
+		}
+		if logType != "" && strings.ToLower(entry.Type) != logType {
+			continue
+		}
+		if keyword != "" && !logMatchesKeyword(entry, keyword) {
+			continue
+		}
+		filtered = append(filtered, entry)
+		if len(filtered) >= limit {
+			break
+		}
+	}
+	return filtered, nil
+}
+
+// LogLevel 与前端徽标逻辑保持一致，用于服务端筛选。
+func LogLevel(entry models.LogEntry) string {
+	text := strings.ToLower(entry.Type + " " + entry.Message)
+	for _, key := range []string{"error", "fail", "failed", "denied"} {
+		if strings.Contains(text, key) {
+			return "ERROR"
+		}
+	}
+	for _, key := range []string{"warning", "warn", "offline", "exceeded"} {
+		if strings.Contains(text, key) {
+			return "WARN"
+		}
+	}
+	return "INFO"
+}
+
+func logMatchesKeyword(entry models.LogEntry, keyword string) bool {
+	text := strings.ToLower(strings.Join([]string{
+		entry.Type,
+		entry.Username,
+		entry.ServerName,
+		entry.Message,
+		entry.CreatedAt.Format(time.RFC3339),
+	}, " "))
+	return strings.Contains(text, keyword)
+}
+
 // clampPercent 避免 Agent 异常数据破坏页面百分比展示。
 func clampPercent(value float64) float64 {
 	switch {

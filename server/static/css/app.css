@@ -241,7 +241,7 @@ tr:last-child td {
 
 .filter-panel {
   display: grid;
-  grid-template-columns: 140px 160px minmax(180px, 1fr) auto;
+  grid-template-columns: 140px 160px minmax(180px, 1fr) auto auto auto;
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px 18px;

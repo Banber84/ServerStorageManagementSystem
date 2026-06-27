@@ -129,6 +129,38 @@ func TestStoreManagementFlow(t *testing.T) {
 	if createdLog.CreatedAt.Format("2006-01-02T15:04:05Z07:00")[19:] != "Z" {
 		t.Fatalf("log timestamp should render as UTC timestamp: %s", createdLog.CreatedAt.Format(time.RFC3339))
 	}
+	if _, err := store.CreateLog(models.CreateLogRequest{
+		Type:       "sync",
+		Username:   "alice",
+		ServerName: "NodeA",
+		Message:    "sync failed: quota denied",
+	}); err != nil {
+		t.Fatalf("create sync error log: %v", err)
+	}
+	if _, err := store.CreateLog(models.CreateLogRequest{
+		Type:       "storage",
+		Username:   "alice",
+		ServerName: "NodeA",
+		Message:    "quota exceeded warning",
+	}); err != nil {
+		t.Fatalf("create storage warning log: %v", err)
+	}
+
+	filtered, err := store.ListLogsFiltered(models.LogFilter{Level: "ERROR", Type: "sync", Limit: 100})
+	if err != nil {
+		t.Fatalf("filter error sync logs: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].Type != "sync" || filtered[0].Message != "sync failed: quota denied" {
+		t.Fatalf("unexpected error sync logs: %#v", filtered)
+	}
+
+	filtered, err = store.ListLogsFiltered(models.LogFilter{Keyword: "exceeded", KeyOnly: true, Limit: 100})
+	if err != nil {
+		t.Fatalf("filter key logs: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].Type != "storage" || filtered[0].Message != "quota exceeded warning" {
+		t.Fatalf("unexpected key logs: %#v", filtered)
+	}
 
 	dashboard, err := store.Dashboard()
 	if err != nil {

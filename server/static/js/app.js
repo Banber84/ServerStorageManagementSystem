@@ -19,20 +19,6 @@
     node.title = raw;
   });
 
-  const labelMap = {
-    login: "登录",
-    mount: "挂载",
-    system: "系统",
-    sync: "同步",
-    agent: "Agent",
-    storage: "存储",
-    quota: "配额",
-    user: "用户",
-    error: "错误",
-    warning: "警告",
-    info: "信息",
-  };
-
   const levelMap = {
     warn: ["warning", "warn", "offline", "exceeded"],
     error: ["error", "fail", "failed", "denied"],
@@ -47,8 +33,7 @@
 
   document.querySelectorAll("[data-log-type-label]").forEach((node) => {
     const raw = node.dataset.logType || "";
-    const key = raw.toLowerCase();
-    node.textContent = labelMap[key] || raw || "未分类";
+    node.textContent = raw || "unknown";
   });
 
   document.querySelectorAll("[data-log-level]").forEach((node) => {

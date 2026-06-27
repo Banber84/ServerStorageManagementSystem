@@ -97,8 +97,9 @@ func (h *Handler) serversPage(ctx *gin.Context) {
 }
 
 func (h *Handler) logsPage(ctx *gin.Context) {
-	logs, err := h.store.ListLogs(100)
-	render(ctx, "logs.html", gin.H{"Title": "系统日志", "Page": "logs", "Logs": logs}, err)
+	filter := logFilterFromQuery(ctx)
+	logs, err := h.store.ListLogsFiltered(filter)
+	render(ctx, "logs.html", gin.H{"Title": "系统日志", "Page": "logs", "Logs": logs, "Filter": filter}, err)
 }
 
 func (h *Handler) dashboard(ctx *gin.Context) {
@@ -271,8 +272,8 @@ func (h *Handler) deleteServerForm(ctx *gin.Context) {
 
 // 日志 API：保存系统脚本、登录挂载和后台操作日志。
 func (h *Handler) listLogs(ctx *gin.Context) {
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "100"))
-	logs, err := h.store.ListLogs(limit)
+	filter := logFilterFromQuery(ctx)
+	logs, err := h.store.ListLogsFiltered(filter)
 	respond(ctx, logs, err)
 }
 
@@ -327,6 +328,22 @@ func quotaBytesFromForm(ctx *gin.Context) (int64, error) {
 		return 0, errors.New("quota value is out of range")
 	}
 	return int64(bytes), nil
+}
+
+func logFilterFromQuery(ctx *gin.Context) models.LogFilter {
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "100"))
+	keyOnly := false
+	switch strings.ToLower(strings.TrimSpace(ctx.Query("key_only"))) {
+	case "1", "true", "on", "yes":
+		keyOnly = true
+	}
+	return models.LogFilter{
+		Level:   strings.ToUpper(strings.TrimSpace(ctx.Query("level"))),
+		Type:    strings.ToLower(strings.TrimSpace(ctx.Query("type"))),
+		Keyword: strings.TrimSpace(ctx.Query("keyword")),
+		KeyOnly: keyOnly,
+		Limit:   limit,
+	}
 }
 
 func formatMB(bytes int64) string {

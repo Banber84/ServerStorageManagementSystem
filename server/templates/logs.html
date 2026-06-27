@@ -31,13 +31,16 @@
       <div class="field span-2">
         <label>类型</label>
         <select name="type">
-          <option value="login">登录</option>
-          <option value="mount">挂载</option>
-          <option value="sync">同步</option>
-          <option value="agent">Agent</option>
-          <option value="system">系统</option>
-          <option value="warning">警告</option>
-          <option value="error">错误</option>
+          <option value="login">login</option>
+          <option value="mount">mount</option>
+          <option value="sync">sync</option>
+          <option value="storage">storage</option>
+          <option value="quota">quota</option>
+          <option value="user">user</option>
+          <option value="agent">agent</option>
+          <option value="system">system</option>
+          <option value="warning">warning</option>
+          <option value="error">error</option>
         </select>
       </div>
       <div class="field span-2">
@@ -61,40 +64,47 @@
       <div class="panel-header">
         <h2 class="panel-title">日志列表</h2>
       </div>
-      <div class="filter-panel" data-log-filters>
+      <form class="filter-panel" method="get" action="/logs" data-log-filters>
         <div class="field">
           <label>级别</label>
-          <select data-filter-level>
-            <option value="">全部</option>
-            <option value="INFO">INFO</option>
-            <option value="WARN">WARN</option>
-            <option value="ERROR">ERROR</option>
+          <select name="level" data-filter-level>
+            <option value="">ALL</option>
+            <option value="INFO" {{ if eq .Filter.Level "INFO" }}selected{{ end }}>INFO</option>
+            <option value="WARN" {{ if eq .Filter.Level "WARN" }}selected{{ end }}>WARN</option>
+            <option value="ERROR" {{ if eq .Filter.Level "ERROR" }}selected{{ end }}>ERROR</option>
           </select>
         </div>
         <div class="field">
           <label>类型</label>
-          <select data-filter-type>
-            <option value="">全部</option>
-            <option value="login">登录</option>
-            <option value="mount">挂载</option>
-            <option value="sync">同步</option>
-            <option value="storage">存储</option>
-            <option value="quota">配额</option>
-            <option value="agent">Agent</option>
-            <option value="system">系统</option>
-            <option value="warning">警告</option>
-            <option value="error">错误</option>
+          <select name="type" data-filter-type>
+            <option value="">ALL</option>
+            <option value="login" {{ if eq .Filter.Type "login" }}selected{{ end }}>login</option>
+            <option value="mount" {{ if eq .Filter.Type "mount" }}selected{{ end }}>mount</option>
+            <option value="sync" {{ if eq .Filter.Type "sync" }}selected{{ end }}>sync</option>
+            <option value="storage" {{ if eq .Filter.Type "storage" }}selected{{ end }}>storage</option>
+            <option value="quota" {{ if eq .Filter.Type "quota" }}selected{{ end }}>quota</option>
+            <option value="user" {{ if eq .Filter.Type "user" }}selected{{ end }}>user</option>
+            <option value="agent" {{ if eq .Filter.Type "agent" }}selected{{ end }}>agent</option>
+            <option value="system" {{ if eq .Filter.Type "system" }}selected{{ end }}>system</option>
+            <option value="warning" {{ if eq .Filter.Type "warning" }}selected{{ end }}>warning</option>
+            <option value="error" {{ if eq .Filter.Type "error" }}selected{{ end }}>error</option>
           </select>
         </div>
         <div class="field">
           <label>关键字</label>
-          <input data-filter-keyword placeholder="用户、节点、路径或日志内容">
+          <input name="keyword" value="{{ .Filter.Keyword }}" data-filter-keyword placeholder="用户、节点、路径或日志内容">
         </div>
         <label class="checkbox-field">
-          <input data-filter-key-only type="checkbox">
+          <input name="key_only" value="1" data-filter-key-only type="checkbox" {{ if .Filter.KeyOnly }}checked{{ end }}>
           只看关键日志
         </label>
-      </div>
+        <div class="field action">
+          <button class="btn primary" type="submit">筛选</button>
+        </div>
+        <div class="field action">
+          <a class="btn ghost" href="/logs">重置</a>
+        </div>
+      </form>
       <div class="table-wrap">
         <table>
           <thead>
@@ -119,6 +129,6 @@
     </section>
   </main>
 </div>
-<script src="/static/js/app.js"></script>
+<script src="/static/js/app.js?v=20260627-log-menu"></script>
 </body>
 </html>
