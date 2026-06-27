@@ -1,0 +1,22 @@
+[Unit]
+Description=Server Storage Management System Web Management
+Documentation=file:/opt/ssms/docs/design/runbook.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/ssms/storage-server.env
+Environment=SSMS_SERVER_ADDR=0.0.0.0:8080
+Environment=SSMS_DB_PATH=/var/lib/ssms/server-storage.db
+Environment=GIN_MODE=release
+WorkingDirectory=/opt/ssms
+ExecStart=/usr/local/bin/storage-server -addr ${SSMS_SERVER_ADDR} -db ${SSMS_DB_PATH}
+Restart=always
+RestartSec=5
+StateDirectory=ssms
+LogsDirectory=ssms
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

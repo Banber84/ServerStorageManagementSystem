@@ -88,6 +88,46 @@ go build -o bin/storage-server ./server
 go build -o bin/storage-agent ./agent
 ```
 
+## systemd 部署管理后台
+
+管理后台运行时需要读取 `server/templates/*.html`，建议把项目发布目录放到 `/opt/ssms`：
+
+```bash
+sudo mkdir -p /opt/ssms /etc/ssms
+sudo cp -r server docs configs README.md LICENSE /opt/ssms/
+sudo install -m 0755 bin/storage-server /usr/local/bin/storage-server
+sudo install -m 0644 configs/storage-server.env.example /etc/ssms/storage-server.env
+sudo install -m 0644 configs/storage-server.service /etc/systemd/system/storage-server.service
+```
+
+根据实际环境修改：
+
+```bash
+sudo vim /etc/ssms/storage-server.env
+```
+
+示例：
+
+```text
+SSMS_SERVER_ADDR=0.0.0.0:8080
+SSMS_DB_PATH=/var/lib/ssms/server-storage.db
+GIN_MODE=release
+```
+
+启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now storage-server
+sudo systemctl status storage-server
+```
+
+查看日志：
+
+```bash
+journalctl -u storage-server -f
+```
+
 分发 Agent 到节点示例：
 
 ```bash
@@ -95,10 +135,51 @@ scp bin/storage-agent user@192.168.1.188:/tmp/storage-agent
 ssh user@192.168.1.188 'sudo install -m 0755 /tmp/storage-agent /usr/local/bin/storage-agent'
 ```
 
-systemd 常驻运行模板见：
+## systemd 部署 Agent
+
+Agent 常驻运行模板见：
 
 ```text
-agent/storage-agent.service
+configs/storage-agent.service
+```
+
+在每台需要上报状态的节点上执行：
+
+```bash
+sudo mkdir -p /etc/ssms
+sudo install -m 0755 bin/storage-agent /usr/local/bin/storage-agent
+sudo install -m 0644 configs/storage-agent.env.example /etc/ssms/storage-agent.env
+sudo install -m 0644 configs/storage-agent.service /etc/systemd/system/storage-agent.service
+```
+
+根据当前节点修改：
+
+```bash
+sudo vim /etc/ssms/storage-agent.env
+```
+
+示例：
+
+```text
+SSMS_SERVER_URL=http://192.168.1.187:8080
+SSMS_AGENT_NAME=node01
+SSMS_AGENT_ADDRESS=192.168.1.188
+SSMS_AGENT_DISK=/
+SSMS_AGENT_INTERVAL=30s
+```
+
+启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now storage-agent
+sudo systemctl status storage-agent
+```
+
+查看日志：
+
+```bash
+journalctl -u storage-agent -f
 ```
 
 ## API 快速测试

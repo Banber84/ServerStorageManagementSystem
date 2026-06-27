@@ -83,22 +83,35 @@ ssh user@192.168.1.188 'sudo install -m 0755 /tmp/storage-agent /usr/local/bin/s
 
 ## systemd 部署
 
-本目录提供了 systemd 模板：
+项目提供了 systemd 模板：
 
 ```text
-agent/storage-agent.service
+configs/storage-agent.service
 ```
 
-复制到节点：
+安装二进制和配置：
 
 ```bash
-sudo cp agent/storage-agent.service /etc/systemd/system/storage-agent.service
+sudo mkdir -p /etc/ssms
+sudo install -m 0755 bin/storage-agent /usr/local/bin/storage-agent
+sudo install -m 0644 configs/storage-agent.env.example /etc/ssms/storage-agent.env
+sudo install -m 0644 configs/storage-agent.service /etc/systemd/system/storage-agent.service
 ```
 
-根据节点实际情况修改：
+根据节点实际情况修改环境变量：
+
+```bash
+sudo vim /etc/ssms/storage-agent.env
+```
+
+示例：
 
 ```text
-ExecStart=/usr/local/bin/storage-agent -server http://192.168.1.187:8080 -name node01 -address 192.168.1.188 -disk / -interval 30s
+SSMS_SERVER_URL=http://192.168.1.187:8080
+SSMS_AGENT_NAME=node01
+SSMS_AGENT_ADDRESS=192.168.1.188
+SSMS_AGENT_DISK=/
+SSMS_AGENT_INTERVAL=30s
 ```
 
 启动服务：
