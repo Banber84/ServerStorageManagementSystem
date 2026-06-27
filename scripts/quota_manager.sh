@@ -82,6 +82,7 @@ EOF
     if [[ "$SYNC_BACKEND" == "1" ]]; then
       if "$SCRIPT_DIR/backend_sync.sh" health >/dev/null 2>&1; then
         "$SCRIPT_DIR/backend_sync.sh" upsert-user "$USERNAME" "$QUOTA_GB"
+        "$SCRIPT_DIR/backend_sync.sh" sync-usage --format-summary || true
       else
         echo "后台 API 不可用，Linux 配额已修改，已跳过后台同步。"
       fi

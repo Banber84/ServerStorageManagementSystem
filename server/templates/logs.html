@@ -61,6 +61,40 @@
       <div class="panel-header">
         <h2 class="panel-title">日志列表</h2>
       </div>
+      <div class="filter-panel" data-log-filters>
+        <div class="field">
+          <label>级别</label>
+          <select data-filter-level>
+            <option value="">全部</option>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>类型</label>
+          <select data-filter-type>
+            <option value="">全部</option>
+            <option value="login">登录</option>
+            <option value="mount">挂载</option>
+            <option value="sync">同步</option>
+            <option value="storage">存储</option>
+            <option value="quota">配额</option>
+            <option value="agent">Agent</option>
+            <option value="system">系统</option>
+            <option value="warning">警告</option>
+            <option value="error">错误</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>关键字</label>
+          <input data-filter-keyword placeholder="用户、节点、路径或日志内容">
+        </div>
+        <label class="checkbox-field">
+          <input data-filter-key-only type="checkbox">
+          只看关键日志
+        </label>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>

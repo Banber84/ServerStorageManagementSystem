@@ -239,6 +239,14 @@ tr:last-child td {
   margin-bottom: 20px;
 }
 
+.filter-panel {
+  display: grid;
+  grid-template-columns: 140px 160px minmax(180px, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -266,6 +274,17 @@ tr:last-child td {
 
 .field.action {
   align-self: end;
+}
+
+.checkbox-field {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  padding-top: 22px;
+}
+
+.checkbox-field input {
+  width: auto;
 }
 
 label {
@@ -367,6 +386,10 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
 code {
   background: #eef2f6;
   border-radius: 6px;
@@ -393,6 +416,7 @@ code {
   }
 
   .form-panel,
+  .filter-panel,
   .field.span-1,
   .field.span-2,
   .field.span-3,

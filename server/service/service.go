@@ -73,9 +73,9 @@ func (s *Store) CreateUser(req models.CreateUserRequest) (models.User, error) {
 		return models.User{}, err
 	}
 	_, _ = s.db.Exec(
-		`INSERT INTO logs (type, username, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
+		`INSERT INTO logs (type, username, message, created_at) VALUES ('user', ?, ?, CURRENT_TIMESTAMP)`,
 		username,
-		"created user",
+		fmt.Sprintf("created user; quota=%s; email=%s", bytesText(req.QuotaBytes), strings.TrimSpace(req.Email)),
 	)
 	return s.GetUser(id)
 }
@@ -121,6 +121,7 @@ func (s *Store) DeleteUser(id int64) error {
 	if err != nil {
 		return err
 	}
+	usage, usageErr := s.GetStorageUsage(user.ID)
 	result, err := s.db.Exec(`DELETE FROM users WHERE id = ?`, id)
 	if err != nil {
 		return err
@@ -132,10 +133,14 @@ func (s *Store) DeleteUser(id int64) error {
 	if affected == 0 {
 		return sql.ErrNoRows
 	}
+	message := fmt.Sprintf("deleted user; quota=%s", bytesText(user.QuotaBytes))
+	if usageErr == nil {
+		message = fmt.Sprintf("%s; last_used=%s; path=%s", message, bytesText(usage.UsedBytes), usage.Path)
+	}
 	_, _ = s.db.Exec(
-		`INSERT INTO logs (type, username, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
+		`INSERT INTO logs (type, username, message, created_at) VALUES ('user', ?, ?, CURRENT_TIMESTAMP)`,
 		user.Username,
-		"deleted user",
+		message,
 	)
 	return nil
 }
@@ -144,6 +149,7 @@ func (s *Store) UpdateQuota(id int64, quotaBytes int64) (models.User, error) {
 	if quotaBytes <= 0 {
 		return models.User{}, errors.New("quota_bytes must be greater than zero")
 	}
+	previous, previousErr := s.GetUser(id)
 	result, err := s.db.Exec(`UPDATE users SET quota_bytes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, quotaBytes, id)
 	if err != nil {
 		return models.User{}, err
@@ -157,10 +163,14 @@ func (s *Store) UpdateQuota(id int64, quotaBytes int64) (models.User, error) {
 	}
 	user, err := s.GetUser(id)
 	if err == nil {
+		message := fmt.Sprintf("updated quota; new=%s", bytesText(quotaBytes))
+		if previousErr == nil {
+			message = fmt.Sprintf("updated quota; old=%s; new=%s", bytesText(previous.QuotaBytes), bytesText(quotaBytes))
+		}
 		_, _ = s.db.Exec(
-			`INSERT INTO logs (type, username, message, created_at) VALUES ('system', ?, ?, CURRENT_TIMESTAMP)`,
+			`INSERT INTO logs (type, username, message, created_at) VALUES ('quota', ?, ?, CURRENT_TIMESTAMP)`,
 			user.Username,
-			"updated quota",
+			message,
 		)
 	}
 	return user, err
@@ -182,10 +192,12 @@ func (s *Store) UpsertStorageUsage(req models.UpdateStorageUsageRequest) (models
 	if req.UsedBytes < 0 {
 		return models.StorageUsage{}, errors.New("used_bytes must be greater than or equal to zero")
 	}
-	if _, err := s.GetUser(req.UserID); err != nil {
+	user, err := s.GetUser(req.UserID)
+	if err != nil {
 		return models.StorageUsage{}, err
 	}
-	_, err := s.db.Exec(
+	previous, previousErr := s.GetStorageUsage(req.UserID)
+	_, err = s.db.Exec(
 		`INSERT INTO storage_usage (user_id, used_bytes, path, scanned_at)
 		 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
 		 ON CONFLICT(user_id) DO UPDATE SET
@@ -199,7 +211,24 @@ func (s *Store) UpsertStorageUsage(req models.UpdateStorageUsageRequest) (models
 	if err != nil {
 		return models.StorageUsage{}, err
 	}
-	return s.GetStorageUsage(req.UserID)
+	usage, err := s.GetStorageUsage(req.UserID)
+	if err != nil {
+		return models.StorageUsage{}, err
+	}
+	if errors.Is(previousErr, sql.ErrNoRows) {
+		_, _ = s.db.Exec(
+			`INSERT INTO logs (type, username, message, created_at) VALUES ('storage', ?, ?, CURRENT_TIMESTAMP)`,
+			user.Username,
+			fmt.Sprintf("storage usage synced; used=%s; remaining=%s; path=%s", bytesText(usage.UsedBytes), bytesText(usage.RemainingBytes), usage.Path),
+		)
+	} else if previousErr == nil && (previous.UsedBytes != usage.UsedBytes || previous.Path != usage.Path) {
+		_, _ = s.db.Exec(
+			`INSERT INTO logs (type, username, message, created_at) VALUES ('storage', ?, ?, CURRENT_TIMESTAMP)`,
+			user.Username,
+			fmt.Sprintf("storage usage changed; old_used=%s; new_used=%s; remaining=%s; path=%s", bytesText(previous.UsedBytes), bytesText(usage.UsedBytes), bytesText(usage.RemainingBytes), usage.Path),
+		)
+	}
+	return usage, nil
 }
 
 // UpsertStorageUsageByUsername 让脚本无需知道后台用户 ID，只需传 Linux/Samba 用户名。
@@ -467,4 +496,8 @@ func clampPercent(value float64) float64 {
 	default:
 		return value
 	}
+}
+
+func bytesText(bytes int64) string {
+	return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
 }

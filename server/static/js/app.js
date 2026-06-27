@@ -26,6 +26,7 @@
     sync: "同步",
     agent: "Agent",
     storage: "存储",
+    quota: "配额",
     user: "用户",
     error: "错误",
     warning: "警告",
@@ -33,8 +34,8 @@
   };
 
   const levelMap = {
-    warn: ["warning", "warn", "offline", "quota"],
-    error: ["error", "fail", "failed", "delete", "remove"],
+    warn: ["warning", "warn", "offline", "exceeded"],
+    error: ["error", "fail", "failed", "denied"],
   };
 
   function logLevel(type, message) {
@@ -57,6 +58,44 @@
     const [className, label] = logLevel(type, message);
     node.className = `badge ${className}`;
     node.textContent = label;
+    if (row) {
+      row.dataset.logLevel = label;
+    }
+  });
+
+  const logFilters = document.querySelector("[data-log-filters]");
+  if (logFilters) {
+    const typeInput = logFilters.querySelector("[data-filter-type]");
+    const levelInput = logFilters.querySelector("[data-filter-level]");
+    const keywordInput = logFilters.querySelector("[data-filter-keyword]");
+    const keyOnlyInput = logFilters.querySelector("[data-filter-key-only]");
+    const rows = Array.from(document.querySelectorAll("[data-log-row]"));
+
+    const applyFilters = () => {
+      const type = typeInput ? typeInput.value.toLowerCase() : "";
+      const level = levelInput ? levelInput.value.toUpperCase() : "";
+      const keyword = keywordInput ? keywordInput.value.trim().toLowerCase() : "";
+      const keyOnly = keyOnlyInput ? keyOnlyInput.checked : false;
+
+      rows.forEach((row) => {
+        const rowType = (row.dataset.logType || "").toLowerCase();
+        const rowLevel = (row.dataset.logLevel || "INFO").toUpperCase();
+        const rowText = row.textContent.toLowerCase();
+        const visible =
+          (!type || rowType === type) &&
+          (!level || rowLevel === level) &&
+          (!keyOnly || rowLevel === "WARN" || rowLevel === "ERROR") &&
+          (!keyword || rowText.includes(keyword));
+        row.classList.toggle("is-hidden", !visible);
+      });
+    };
+
+    [typeInput, levelInput, keywordInput, keyOnlyInput].forEach((input) => {
+      if (!input) return;
+      input.addEventListener("input", applyFilters);
+      input.addEventListener("change", applyFilters);
+    });
+    applyFilters();
   });
 
   document.querySelectorAll("form[data-confirm]").forEach((form) => {
