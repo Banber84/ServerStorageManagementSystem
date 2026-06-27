@@ -72,7 +72,8 @@ install -m 0644 "$PROJECT_ROOT/configs/storage-usage-sync.timer" /etc/systemd/sy
 systemctl daemon-reload
 systemctl enable storage-server
 systemctl restart storage-server
-systemctl enable --now storage-usage-sync.timer
+systemctl enable storage-usage-sync.timer
+systemctl restart storage-usage-sync.timer
 
 cat <<EOF
 管理后台安装完成。

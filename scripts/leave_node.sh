@@ -17,7 +17,7 @@ usage() {
   sudo scripts/leave_node.sh NODE_NAME [选项]
 
 从 SSMS 安全移除登录节点：
-  1. 停止并卸载节点 storage-agent。
+  1. 停止并卸载节点 SMB 网关和 storage-agent。
   2. 删除节点同步 sudoers。
   3. 撤销 Storage Server 与节点的双向 SSH 公钥。
   4. 从项目和 /etc/ssms/nodes.conf 删除节点。
@@ -138,6 +138,31 @@ write_site_nodes() {
   ssms_sync_site_nodes "$site_file" "$PROJECT_NODES"
 }
 
+uninstall_node_gateway_and_agent() {
+  echo "卸载 $NODE_NAME 的 SMB 网关、Agent 和同步 sudoers；若出现 sudo 提示，请输入 $NODE_USER 的登录密码。"
+  "${SSH_CMD[@]}" -tt "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "if [ -x '$NODE_PROJECT_DIR/scripts/install_smb_gateway.sh' ]; then
+       sudo '$NODE_PROJECT_DIR/scripts/install_smb_gateway.sh' --uninstall;
+     else
+       sudo systemctl disable --now ssms-smb-gateway.socket >/dev/null 2>&1 || true;
+       sudo systemctl stop ssms-smb-gateway.service >/dev/null 2>&1 || true;
+       sudo rm -f /etc/systemd/system/ssms-smb-gateway.socket /etc/systemd/system/ssms-smb-gateway.service;
+       sudo systemctl daemon-reload;
+     fi;
+     if systemctl is-active --quiet ssms-smb-gateway.socket ||
+        systemctl is-active --quiet ssms-smb-gateway.service ||
+        sudo test -e /etc/systemd/system/ssms-smb-gateway.socket ||
+        sudo test -e /etc/systemd/system/ssms-smb-gateway.service; then
+       echo 'SMB 网关卸载检查失败。' >&2;
+       exit 1;
+     fi;
+     sudo systemctl disable --now storage-agent >/dev/null 2>&1 || true;
+     sudo rm -f /etc/systemd/system/storage-agent.service /etc/ssms/storage-agent.env /usr/local/bin/storage-agent /etc/sudoers.d/ssms-node-sync;
+     sudo systemctl daemon-reload;
+     sudo systemctl reset-failed storage-agent >/dev/null 2>&1 || true"
+  echo "$NODE_NAME 的 SMB 网关已停止并卸载。"
+}
+
 if [[ "$CONFIG_ONLY" == "0" ]]; then
   STORAGE_HOME="$(getent passwd "$STORAGE_USER" | cut -d: -f6)"
   if [[ -z "$STORAGE_HOME" || ! -f "$STORAGE_HOME/.ssh/id_ed25519.pub" ]]; then
@@ -148,12 +173,7 @@ if [[ "$CONFIG_ONLY" == "0" ]]; then
   NODE_PUB="$("${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$NODE_TARGET" \
     "cat ~/.ssh/id_ed25519.pub")"
 
-  echo "清理 $NODE_NAME 的 Agent 和同步 sudoers；若出现 sudo 提示，请输入 $NODE_USER 的登录密码。"
-  "${SSH_CMD[@]}" -tt "${SSH_OPTS[@]}" "$NODE_TARGET" \
-    "sudo systemctl disable --now storage-agent >/dev/null 2>&1 || true;
-     sudo rm -f /etc/systemd/system/storage-agent.service /etc/ssms/storage-agent.env /usr/local/bin/storage-agent /etc/sudoers.d/ssms-node-sync;
-     sudo systemctl daemon-reload;
-     sudo systemctl reset-failed storage-agent >/dev/null 2>&1 || true"
+  uninstall_node_gateway_and_agent
 
   printf '%s\n' "$STORAGE_PUB" | "${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$NODE_TARGET" '
     tmp="$(mktemp)"

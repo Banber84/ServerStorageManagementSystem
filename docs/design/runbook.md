@@ -168,8 +168,8 @@ sudo systemctl enable --now storage-server
 sudo systemctl status storage-server
 ```
 
-安装脚本还会启用 `storage-usage-sync.timer`，默认每 5 分钟把实际目录用量
-同步到管理后台：
+安装脚本还会启用 `storage-usage-sync.timer`：启动后 30 秒执行首次同步，
+之后每 1 分钟把实际目录用量同步到管理后台。存储统计页面每 30 秒自动刷新：
 
 ```bash
 systemctl list-timers storage-usage-sync.timer

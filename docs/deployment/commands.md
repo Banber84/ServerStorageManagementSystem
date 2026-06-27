@@ -14,8 +14,9 @@ sudo systemctl status ssh
 ```bash
 sudo scripts/install_storage_server.sh
 sudo scripts/quota_manager.sh enable
-sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1
-sudo scripts/leave_node.sh nodeC --storage-user a2
+sudo scripts/join_node.sh NodeC 192.168.1.215 nodec1
+sudo scripts/leave_node.sh NodeC --storage-user a2
+sudo scripts/deploy_smb_gateways.sh
 sudo scripts/create_user.sh alice --quota-gb 10
 sudo scripts/sync_user.sh alice --quota-gb 10
 sudo scripts/sync_delete_user.sh alice
@@ -32,6 +33,7 @@ sudo scripts/delete_user.sh alice --keep-data
 ```bash
 sudo scripts/install_node_client.sh
 sudo scripts/install_node_agent.sh --help
+sudo scripts/install_smb_gateway.sh --storage-server 192.168.1.187
 sudo scripts/create_node_user.sh alice
 su - alice
 mount | grep /home/alice/storage

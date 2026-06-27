@@ -138,7 +138,8 @@ sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1
 7. 配置 Storage Server 和新节点两边的 sudoers 免密同步命令。
 8. 验证创建和删除同步脚本可以远程调用。
 9. 扫描 Storage Server 的现有用户并补建到新节点。
-10. 安装并启动 storage-agent，使新节点出现在管理后台。
+10. 安装 SMB 入口网关，使客户端可以通过节点 IP 访问共享。
+11. 安装并启动 storage-agent，使新节点出现在管理后台。
 ```
 
 节点会同时写入项目内 `configs/nodes.conf` 和运行时
@@ -182,6 +183,8 @@ sudo scripts/join_node.sh nodeC 192.168.1.130 nodec1 --skip-existing-users
 如果暂时不部署监控 Agent，可以使用 `--skip-agent`。默认管理后台地址读取
 `backend.conf`，也可以使用 `--management-url` 显式指定。
 
+如果不需要客户端通过该节点访问 SMB，可以使用 `--skip-smb-gateway`。
+
 统一密码必须通过 `sync_user.sh` 创建或更新，不能只执行 `smbpasswd`，
 否则 Storage Server 的 Linux shadow 哈希会与 Samba 密码不一致。
 
@@ -209,7 +212,7 @@ sudo scripts/sync_user.sh joincheck2 --quota-gb 1
 sudo scripts/leave_node.sh nodeC --storage-user a2
 ```
 
-该命令会停止并卸载节点 Agent、删除同步 sudoers、撤销双向 SSH 公钥、
+该命令会停止并卸载节点 SMB Gateway 和 Agent、删除同步 sudoers、撤销双向 SSH 公钥、
 从项目和运行时节点清单删除该节点，并删除后台节点状态记录。
 不会删除节点本地用户、用户 home 或 Storage Server 上的共享数据。
 

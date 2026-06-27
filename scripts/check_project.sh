@@ -13,7 +13,9 @@ echo "检查关键命令帮助入口。"
 for script in \
   backend_sync.sh \
   create_node_user.sh \
+  deploy_smb_gateways.sh \
   install_node_agent.sh \
+  install_smb_gateway.sh \
   join_node.sh \
   leave_node.sh
 do
@@ -28,6 +30,15 @@ if grep -qE '/api/users/\$username/quota|/api/storage/by-username' "$PROJECT_ROO
   exit 1
 fi
 grep -qF '"${SSH_CMD[@]}" -n "$SSH_USER@$NODE_HOST"' "$PROJECT_ROOT/scripts/sync_delete_user.sh"
+grep -qF 'ListenStream=445' "$PROJECT_ROOT/configs/ssms-smb-gateway.socket"
+grep -qF 'systemd-socket-proxyd' "$PROJECT_ROOT/scripts/install_smb_gateway.sh"
+grep -qF 'sync_node_smb_gateway_files' "$PROJECT_ROOT/scripts/join_node.sh"
+grep -qF 'node_smb_gateway_ready' "$PROJECT_ROOT/scripts/join_node.sh"
+grep -qF 'install_smb_gateway.sh' "$PROJECT_ROOT/scripts/leave_node.sh"
+grep -qF 'SMB 网关卸载检查失败' "$PROJECT_ROOT/scripts/leave_node.sh"
+grep -qF 'OnUnitActiveSec=1min' "$PROJECT_ROOT/configs/storage-usage-sync.timer"
+grep -qF '<meta http-equiv="refresh" content="30">' "$PROJECT_ROOT/server/templates/storage.html"
+grep -qF 'systemctl restart storage-usage-sync.timer' "$PROJECT_ROOT/scripts/install_management_server.sh"
 
 echo "检查统一节点配置更新。"
 tmp_dir="$(mktemp -d)"

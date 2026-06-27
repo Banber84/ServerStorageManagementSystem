@@ -2,12 +2,11 @@
 Description=Periodically synchronize SSMS storage usage
 
 [Timer]
-OnBootSec=2min
-OnUnitActiveSec=5min
-RandomizedDelaySec=30s
+OnBootSec=30s
+OnUnitActiveSec=1min
+RandomizedDelaySec=0
 Persistent=true
 Unit=storage-usage-sync.service
 
 [Install]
 WantedBy=timers.target
-

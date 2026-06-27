@@ -1,0 +1,12 @@
+[Unit]
+Description=SSMS SMB gateway listener
+Documentation=https://www.freedesktop.org/software/systemd/man/systemd-socket-proxyd.html
+
+[Socket]
+ListenStream=445
+Accept=no
+NoDelay=true
+Service=ssms-smb-gateway.service
+
+[Install]
+WantedBy=sockets.target

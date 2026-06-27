@@ -25,6 +25,10 @@ NodeC 项目目录：/home/nodec1/ServerStorageManagementSystem
 11. nodeverify 在 NodeC 写入的文件可以在 NodeA 读取和修改。
 12. NodeC 可以发起 nodecfromc 的创建与删除同步。
 13. storage-usage-sync.timer 已启用，后台页面用量显示正确。
+14. Windows 资源管理器可以通过 NodeA、NodeB、NodeC 的 SMB Gateway 访问共享。
+15. join_node.sh 可以在接入 NodeC 时自动安装并检查 SMB Gateway。
+16. leave_node.sh 已完成 NodeC 实机退出测试，Gateway、Agent、同步 sudoers、
+    双向 SSH key、节点清单和后台记录均成功清理。
 ```
 
 ## 测试中发现并修复的问题
@@ -79,28 +83,64 @@ configs/site.env 中的 SSMS_NODES（文件存在时）
 Linux hostname 保持小写 `nodec`，SSMS 显示名称统一为 `NodeC`。
 项目配置、运行时配置和 `site.env` 已统一。
 
-## 待实机回归
+### 10. 用户存储用量刷新较慢
 
-`leave_node.sh` 的完整节点退出流程尚未执行。当前只完成了后台临时节点记录
-创建/删除测试，未实际移除 NodeC。
+通过 Windows 资源管理器向 bob 的共享目录写入约 700 MB 文件后，管理后台
+较长时间才显示新用量。原因是 `storage-usage-sync.timer` 原先每 5 分钟
+执行一次，另有最多 30 秒随机延迟，且存储统计页面不会自动刷新。
 
-## 回归命令
+现调整为：
 
-在 Storage Server 重新运行接入：
+```text
+Storage Server 启动后 30 秒执行首次用量同步
+之后每 1 分钟执行一次用量同步
+存储统计页面每 30 秒自动刷新
+```
+
+项目检查已通过；部署后预期最迟约 1 分 30 秒在页面看到变化。
+
+## NodeC 生命周期实测
+
+### 重新加入
 
 ```bash
 sudo scripts/join_node.sh NodeC 192.168.1.215 nodec1 \
   --storage-user a2 \
   --storage-host 192.168.1.187 \
-  --storage-project /home/a2/ServerStorageManagementSystem \
-  --skip-install
+  --storage-project /home/a2/ServerStorageManagementSystem
 ```
 
-检查节点与 Agent：
+结果：节点客户端、现有用户、Agent、同步权限和 SMB Gateway 均完成配置。
+接入过程中仍需要多次输入 SSH 登录密码或远端 sudo 密码，后续可继续优化
+认证交互。
+
+### 完整退出
+
+```bash
+sudo scripts/leave_node.sh NodeC --storage-user a2
+```
+
+实际结果：
+
+```text
+SMB 网关已卸载。
+NodeC 的 SMB 网关已停止并卸载。
+后台节点已删除：NodeC
+节点已移除：NodeC (192.168.1.215)
+节点本地用户和 Storage Server 共享数据均未删除。
+```
+
+退出流程执行完成且未报错，验证了 Gateway 会随节点生命周期自动卸载。
+
+## 后续检查命令
+
+重新加入 NodeC 后检查节点、Agent 和 Gateway：
 
 ```bash
 grep NodeC /etc/ssms/nodes.conf
 ssh nodec1@192.168.1.215 'systemctl is-active storage-agent'
+ssh nodec1@192.168.1.215 \
+  'systemctl is-active ssms-smb-gateway.socket; sudo ss -ltnp "sport = :445"'
 curl http://192.168.1.187:8080/api/servers
 ```
 

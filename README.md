@@ -23,6 +23,7 @@
 - 支持多个服务器节点
 - 用户登录任意节点均可访问相同数据
 - 数据集中存储，避免文件分散
+- Windows/macOS 可通过任意节点的 SMB 网关访问中心共享
 
 ### 自动挂载
 
@@ -161,8 +162,10 @@ ServerStorageManagementSystem/
 │   ├── install_management_server.sh
 │   ├── install_node_agent.sh
 │   ├── install_node_client.sh
+│   ├── install_smb_gateway.sh
 │   ├── install_storage_agent.sh
 │   ├── install_storage_server.sh
+│   ├── deploy_smb_gateways.sh
 │   ├── join_node.sh
 │   ├── leave_node.sh
 │   ├── quota_manager.sh

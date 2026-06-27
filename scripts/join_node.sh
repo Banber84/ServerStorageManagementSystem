@@ -26,8 +26,9 @@ usage() {
   3. 配置 Storage Server <-> 新节点 双向 SSH key。
   4. 复制 configs、scripts、docs 到新节点。
   5. 写入新节点的 Storage Server 运行配置并安装客户端。
-  6. 配置双方 sudoers 免密同步脚本。
-  7. 验证创建/删除同步脚本可远程调用。
+  6. 安装 SMB 入口网关和节点监控 Agent。
+  7. 配置双方 sudoers 免密同步脚本。
+  8. 验证创建/删除同步脚本可远程调用。
 
 选项：
   --node-project DIR       新节点项目目录，默认 /home/NODE_USER/ServerStorageManagementSystem
@@ -38,6 +39,7 @@ usage() {
   --agent-binary PATH      storage-agent 二进制路径
   --skip-copy              不复制项目文件到新节点
   --skip-install           不执行 install_node_client.sh
+  --skip-smb-gateway       不安装或更新 SMB 入口网关
   --skip-agent             不安装或更新 storage-agent
   --skip-existing-users    不把 Storage Server 的现有用户补建到新节点
 
@@ -80,6 +82,7 @@ MANAGEMENT_URL=""
 AGENT_BINARY=""
 SKIP_COPY="0"
 SKIP_INSTALL="0"
+SKIP_SMB_GATEWAY="0"
 SKIP_AGENT="0"
 SYNC_EXISTING_USERS="1"
 
@@ -115,6 +118,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-install)
       SKIP_INSTALL="1"
+      shift
+      ;;
+    --skip-smb-gateway)
+      SKIP_SMB_GATEWAY="1"
       shift
       ;;
     --skip-agent)
@@ -326,6 +333,33 @@ install_node_client() {
     "cd '$NODE_PROJECT_DIR' && sudo scripts/install_node_client.sh"
 }
 
+node_smb_gateway_ready() {
+  "${SSH_CMD[@]}" -n "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "systemctl is-active --quiet ssms-smb-gateway.socket &&
+     grep -qF -- '$STORAGE_HOST:445' /etc/systemd/system/ssms-smb-gateway.service &&
+     ss -H -ltn 'sport = :445' | grep -q ."
+}
+
+sync_node_smb_gateway_files() {
+  "${SSH_CMD[@]}" -n "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "mkdir -p '$NODE_PROJECT_DIR/scripts' '$NODE_PROJECT_DIR/configs'"
+  "${SCP_CMD[@]}" "${SSH_OPTS[@]}" \
+    "$PROJECT_ROOT/scripts/install_smb_gateway.sh" \
+    "$NODE_TARGET:$NODE_PROJECT_DIR/scripts/install_smb_gateway.sh"
+  "${SCP_CMD[@]}" "${SSH_OPTS[@]}" \
+    "$PROJECT_ROOT/configs/ssms-smb-gateway.socket" \
+    "$NODE_TARGET:$NODE_PROJECT_DIR/configs/ssms-smb-gateway.socket"
+  "${SSH_CMD[@]}" -n "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "chmod +x '$NODE_PROJECT_DIR/scripts/install_smb_gateway.sh'"
+}
+
+install_node_smb_gateway() {
+  echo "安装 $NODE_NAME SMB 入口网关；若出现 sudo 提示，请输入 $NODE_USER 的登录密码。"
+  "${SSH_CMD[@]}" -tt "${SSH_OPTS[@]}" "$NODE_TARGET" \
+    "cd '$NODE_PROJECT_DIR' &&
+     sudo scripts/install_smb_gateway.sh --storage-server '$STORAGE_HOST'"
+}
+
 prepare_agent_binary() {
   if [[ -n "$AGENT_BINARY" ]]; then
     if [[ ! -x "$AGENT_BINARY" ]]; then
@@ -473,6 +507,20 @@ sync_node_runtime_configs
 
 if [[ "$SKIP_INSTALL" == "0" ]]; then
   install_node_client
+fi
+
+if [[ "$SKIP_SMB_GATEWAY" == "0" ]]; then
+  sync_node_smb_gateway_files
+  if node_smb_gateway_ready; then
+    echo "$NODE_NAME 的 SMB 入口网关已正确运行，跳过重复安装。"
+  else
+    install_node_smb_gateway
+  fi
+  if ! node_smb_gateway_ready; then
+    echo "$NODE_NAME 的 SMB 入口网关安装后检查失败。" >&2
+    exit 1
+  fi
+  echo "$NODE_NAME 的 SMB 入口网关可用：$NODE_HOST:445 -> $STORAGE_HOST:445"
 fi
 
 if [[ "$SKIP_AGENT" == "0" ]]; then
