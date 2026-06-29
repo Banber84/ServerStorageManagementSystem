@@ -60,10 +60,12 @@ flowchart TB
 全新 Ubuntu 虚拟机推荐直接使用一键部署。进入项目目录后先做预检查：
 
 ```bash
-cd ~/ServerStorageManagementSystem
+cd ~/SSMS
 chmod +x scripts/*.sh scripts/ssmsctl
 sudo scripts/ssmsctl system bootstrap --host 192.168.1.230 --check-only
 ```
+
+如果项目目录名不是 `SSMS`，进入实际项目目录执行即可。
 
 预检查通过后执行部署：
 

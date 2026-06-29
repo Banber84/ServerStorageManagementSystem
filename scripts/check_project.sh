@@ -93,8 +93,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cp "$PROJECT_ROOT/configs/site.env.example" "$tmp_dir/site.env"
 cat > "$tmp_dir/nodes.conf" <<'EOF'
 # test nodes
-NodeA 192.168.1.122 nodea1 /home/nodea1/ServerStorageManagementSystem
-nodeC 192.168.1.215 nodec1 /home/nodec1/ServerStorageManagementSystem
+NodeA 192.168.1.122 nodea1 /home/nodea1/SSMS
+nodeC 192.168.1.215 nodec1 /home/nodec1/SSMS
 EOF
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/scripts/lib/nodes_config.sh"
@@ -127,14 +127,14 @@ SMB_WORKGROUP="WORKGROUP"
 SMB_NETBIOS_NAME="SSMS-STORAGE"
 STORAGE_SYNC_HOST="192.168.1.187"
 STORAGE_SYNC_USER="a2"
-STORAGE_SYNC_PROJECT_DIR="/home/a2/ServerStorageManagementSystem"
+STORAGE_SYNC_PROJECT_DIR="/home/a2/SSMS"
 DEFAULT_SYNC_QUOTA_GB="1"
 SSMS_AGENT_NAME="NodeA"
 SSMS_AGENT_ADDRESS="192.168.1.188"
 SSMS_AGENT_DISK="/"
 SSMS_AGENT_INTERVAL="30s"
 SSMS_NODES="
-NodeA 192.168.1.188 nodea1 /home/nodea1/ServerStorageManagementSystem
+NodeA 192.168.1.188 nodea1 /home/nodea1/SSMS
 "
 EOF
 "$PROJECT_ROOT/scripts/apply_site_config.sh" --config "$tmp_dir/site-valid.env" --output-dir "$tmp_dir/generated" >/dev/null

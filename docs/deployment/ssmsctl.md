@@ -129,11 +129,12 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 2. `ssmsctl` 自身所在的项目目录。
 3. 当前工作目录。
 4. `/etc/ssms/sync.conf` 中的 Storage Server 项目目录。
-5. 当前管理用户的 `~/ServerStorageManagementSystem`。
-6. `/opt/ssms`。
+5. 当前管理用户的 `~/SSMS`。
+6. 当前管理用户的旧目录 `~/ServerStorageManagementSystem`，仅用于兼容历史部署。
+7. `/opt/ssms`。
 
 需要临时指定项目时：
 
 ```bash
-SSMS_PROJECT_ROOT=/home/a2/ServerStorageManagementSystem ssmsctl system check
+SSMS_PROJECT_ROOT=/home/a2/SSMS ssmsctl system check
 ```
