@@ -17,11 +17,16 @@ import (
 
 type Handler struct {
 	store *service.Store
+	auth  AuthConfig
 }
 
 // NewRouter 注册管理后台页面路由和 REST API 路由。
 func NewRouter(store *service.Store) *gin.Engine {
-	handler := &Handler{store: store}
+	return NewRouterWithAuth(store, AuthConfig{})
+}
+
+func NewRouterWithAuth(store *service.Store, auth AuthConfig) *gin.Engine {
+	handler := &Handler{store: store, auth: auth}
 
 	router := gin.Default()
 	router.SetFuncMap(map[string]any{
@@ -35,19 +40,25 @@ func NewRouter(store *service.Store) *gin.Engine {
 	router.LoadHTMLGlob("server/templates/*.html")
 	router.Static("/static", "server/static")
 
+	router.GET("/login", handler.loginPage)
+	router.POST("/login", handler.login)
+	router.POST("/logout", handler.logout)
+
 	// 页面路由：提供 Bootstrap 管理后台，适合课程 demo 直接浏览操作。
-	router.GET("/", handler.dashboardPage)
-	router.GET("/users", handler.usersPage)
-	router.GET("/storage", handler.storagePage)
-	router.GET("/servers", handler.serversPage)
-	router.GET("/logs", handler.logsPage)
+	pages := router.Group("/")
+	pages.Use(handler.requireAdminPage())
+	pages.GET("/", handler.dashboardPage)
+	pages.GET("/users", handler.usersPage)
+	pages.GET("/storage", handler.storagePage)
+	pages.GET("/servers", handler.serversPage)
+	pages.GET("/logs", handler.logsPage)
 
 	// 表单路由：页面上的创建、删除、修改操作最终也复用 service 层。
-	router.POST("/users", handler.createUserForm)
-	router.POST("/users/:id/delete", handler.deleteUserForm)
-	router.POST("/users/:id/quota", handler.updateQuotaForm)
-	router.POST("/servers/:id/delete", handler.deleteServerForm)
-	router.POST("/logs", handler.createLogForm)
+	pages.POST("/users", handler.createUserForm)
+	pages.POST("/users/:id/delete", handler.deleteUserForm)
+	pages.POST("/users/:id/quota", handler.updateQuotaForm)
+	pages.POST("/servers/:id/delete", handler.deleteServerForm)
+	pages.POST("/logs", handler.createLogForm)
 
 	// REST API：供 Agent、系统脚本和外部测试命令调用。
 	group := router.Group("/api")
@@ -388,6 +399,14 @@ func render(ctx *gin.Context, template string, data gin.H, err error) {
 	if err != nil {
 		ctx.String(statusCode(err), err.Error())
 		return
+	}
+	if _, exists := data["AuthEnabled"]; !exists {
+		data["AuthEnabled"] = ctx.GetBool("auth_enabled")
+	}
+	if _, exists := data["AdminUsername"]; !exists {
+		if username, ok := ctx.Get("admin_username"); ok {
+			data["AdminUsername"] = username
+		}
 	}
 	ctx.HTML(http.StatusOK, template, data)
 }

@@ -36,7 +36,22 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 ```
 
 脚本会使用 sudo 发起用户作为 Storage Server 管理用户，并自动生成
-`configs/site.env`。初始 `SSMS_NODES` 可以为空，后续通过以下命令添加节点：
+`configs/site.env`。同时会启用 Web 管理页面登录认证，生成：
+
+- `SSMS_ADMIN_USERNAME`：默认 `admin`。
+- `SSMS_ADMIN_PASSWORD`：首次部署随机生成。
+- `SSMS_SESSION_SECRET`：首次部署随机生成。
+
+初始密码会打印在 bootstrap 输出和 `/var/log/ssms/bootstrap-storage-server.log`
+中。部署完成后应保存密码，并在 `configs/site.env` 中改成自己的管理员密码后
+重新执行：
+
+```bash
+sudo scripts/apply_site_config.sh --config configs/site.env --output-dir /etc/ssms
+sudo systemctl restart storage-server
+```
+
+初始 `SSMS_NODES` 可以为空，后续通过以下命令添加节点：
 
 ```bash
 sudo ssmsctl node join NodeA 192.168.1.122 nodea1

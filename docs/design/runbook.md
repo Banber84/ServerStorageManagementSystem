@@ -154,6 +154,15 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 和 `ssmsctl`。完整流程见
 [`docs/deployment/bootstrap-storage-server.md`](../deployment/bootstrap-storage-server.md)。
 
+部署完成后访问管理后台会先进入 `/login`。bootstrap 会生成初始管理员密码，
+密码保存在 `configs/site.env` 和 `/etc/ssms/storage-server.env` 中，两个文件
+都应保持 `0600` 权限。修改管理员密码后重新生成配置并重启服务：
+
+```bash
+sudo scripts/apply_site_config.sh --config configs/site.env --output-dir /etc/ssms
+sudo systemctl restart storage-server
+```
+
 ## systemd 部署管理后台
 
 已有统一配置或需要调试单个组件时，可以单独安装管理后台。
@@ -176,7 +185,14 @@ vim configs/site.env
 SSMS_SERVER_ADDR=0.0.0.0:8080
 SSMS_DB_PATH=/var/lib/ssms/server-storage.db
 GIN_MODE=release
+SSMS_AUTH_ENABLED=1
+SSMS_ADMIN_USERNAME=admin
+SSMS_ADMIN_PASSWORD=请填写管理员密码
+SSMS_SESSION_SECRET=请填写随机长字符串
 ```
+
+网页登录认证只保护浏览器管理页面和页面表单。`/api/health`、Agent 上报接口和
+脚本同步接口保持非交互调用方式，后续如需外部 API 鉴权，应单独增加脚本 token。
 
 安装脚本会自动创建 `/opt/ssms` 和 `/etc/ssms`，并复制 Web 模板、文档、配置和脚本。不要只安装 `/usr/local/bin/storage-server`，否则 systemd 启动时会因为 `WorkingDirectory=/opt/ssms` 不存在或缺少 `server/templates` 而失败。
 

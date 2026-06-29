@@ -171,6 +171,43 @@ set_site_value() {
   rm -f "$tmp"
 }
 
+random_hex() {
+  local bytes="$1"
+  od -An -N "$bytes" -tx1 /dev/urandom | tr -d ' \n'
+}
+
+ensure_bootstrap_auth_config() {
+  local admin_username admin_password admin_password_hash session_secret generated_password
+
+  # shellcheck source=/dev/null
+  source "$SITE_CONFIG"
+  admin_username="${SSMS_ADMIN_USERNAME:-admin}"
+  admin_password="${SSMS_ADMIN_PASSWORD:-}"
+  admin_password_hash="${SSMS_ADMIN_PASSWORD_HASH:-}"
+  session_secret="${SSMS_SESSION_SECRET:-}"
+  generated_password=""
+
+  set_site_value "$SITE_CONFIG" SSMS_AUTH_ENABLED "1"
+  if [[ -z "$admin_username" ]]; then
+    admin_username="admin"
+  fi
+  set_site_value "$SITE_CONFIG" SSMS_ADMIN_USERNAME "$admin_username"
+
+  if [[ -z "$admin_password" && -z "$admin_password_hash" ]]; then
+    generated_password="$(random_hex 12)"
+    set_site_value "$SITE_CONFIG" SSMS_ADMIN_PASSWORD "$generated_password"
+  fi
+  if [[ -z "$session_secret" ]]; then
+    set_site_value "$SITE_CONFIG" SSMS_SESSION_SECRET "$(random_hex 32)"
+  fi
+
+  if [[ -n "$generated_password" ]]; then
+    echo "已生成管理后台初始账号：$admin_username"
+    echo "已生成管理后台初始密码：$generated_password"
+    echo "请部署完成后妥善保存，并在 $SITE_CONFIG 中修改默认管理员密码。"
+  fi
+}
+
 prepare_site_config() {
   local config_owner
   if [[ ! -f "$SITE_CONFIG" ]]; then
@@ -208,6 +245,7 @@ prepare_site_config() {
     set_site_value "$SITE_CONFIG" SSMS_AGENT_ADDRESS "$SERVER_HOST"
   fi
 
+  ensure_bootstrap_auth_config
   chmod 0600 "$SITE_CONFIG"
   config_owner="${ADMIN_USER:-root}"
   if id "$config_owner" >/dev/null 2>&1; then
@@ -301,7 +339,7 @@ run_preflight_check() {
   echo "项目目录：$PROJECT_ROOT"
   echo "配置文件：$SITE_CONFIG"
 
-  for command_name in apt-get awk findmnt getent grep id install ip mktemp mount sed systemctl tee; do
+  for command_name in apt-get awk findmnt getent grep id install ip mktemp mount od sed systemctl tee; do
     check_command_available "$command_name" || failures=$((failures + 1))
   done
 

@@ -72,7 +72,7 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 ```
 
 脚本会安装 Samba、quota、管理后台、Storage Agent、用量同步定时器和
-`ssmsctl`。部署说明见
+`ssmsctl`，并生成管理后台初始管理员密码。部署说明见
 [docs/deployment/bootstrap-storage-server.md](docs/deployment/bootstrap-storage-server.md)。
 
 开发运行管理后台：
