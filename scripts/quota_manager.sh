@@ -50,11 +50,7 @@ quota_mount_options_ready() {
 }
 
 quota_is_active() {
-  local options state
-  options="$(findmnt -no OPTIONS --target "$STORAGE_ROOT" 2>/dev/null || true)"
-  if [[ ",$options," == *,quota,* ]]; then
-    return 0
-  fi
+  local state
   state="$(quotaon -p "$MOUNT_POINT" 2>/dev/null || true)"
   grep -Eqi 'user quota.*(is on|enabled)' <<< "$state" && return 0
   run_quota_cmd repquota "$MOUNT_POINT" >/dev/null 2>&1
@@ -94,6 +90,11 @@ enable_quota() {
   fi
   run_quota_cmd quotacheck -cum "$MOUNT_POINT"
   run_quota_cmd quotaon -uv "$MOUNT_POINT"
+  if ! quota_is_active; then
+    echo "$MOUNT_POINT 的用户 quota 初始化后仍不可用。" >&2
+    quota_setup_hint >&2
+    exit 1
+  fi
   run_quota_cmd repquota "$MOUNT_POINT"
 }
 

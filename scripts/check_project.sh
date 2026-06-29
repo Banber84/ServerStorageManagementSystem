@@ -52,6 +52,10 @@ grep -qF '<meta http-equiv="refresh" content="30">' "$PROJECT_ROOT/server/templa
 grep -qF 'quota_manager.sh" ensure' "$PROJECT_ROOT/scripts/create_user.sh"
 grep -qF 'ensure_quota_ready' "$PROJECT_ROOT/scripts/quota_manager.sh"
 grep -qF 'quota_setup_hint' "$PROJECT_ROOT/scripts/quota_manager.sh"
+if grep -qF '*,quota,*' "$PROJECT_ROOT/scripts/quota_manager.sh"; then
+  echo "quota_manager.sh 不能只根据 mount options 中的 quota 判断用户 quota 已启用。" >&2
+  exit 1
+fi
 grep -qF 'systemctl restart storage-usage-sync.timer' "$PROJECT_ROOT/scripts/install_management_server.sh"
 grep -qF 'systemctl restart storage-agent' "$PROJECT_ROOT/scripts/install_storage_agent.sh"
 grep -qF 'system:bootstrap' "$PROJECT_ROOT/scripts/ssmsctl"
