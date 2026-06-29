@@ -35,6 +35,11 @@ MOUNT_POINT_NAME="storage"
 sudo scripts/install_node_client.sh
 ```
 
+安装脚本会把项目中的 `system.conf`、`sync.conf` 和 `backend.conf` 写入
+`/etc/ssms`。从旧 Storage Server 迁移节点时，应重新执行 `ssmsctl node join`
+或该安装脚本，避免用户同步已经指向新服务器，而 `ssmsctl user list` 仍查询
+旧管理后台。
+
 安装脚本会写入以下文件：
 
 ```text

@@ -26,6 +26,9 @@ install -m 0644 "$CONFIG_FILE" /etc/ssms/system.conf
 if [[ -f "$PROJECT_ROOT/configs/sync.conf" ]]; then
   install -m 0644 "$PROJECT_ROOT/configs/sync.conf" /etc/ssms/sync.conf
 fi
+if [[ -f "$PROJECT_ROOT/configs/backend.conf" ]]; then
+  install -m 0644 "$PROJECT_ROOT/configs/backend.conf" /etc/ssms/backend.conf
+fi
 install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl
 
 if [[ -f /etc/security/pam_mount.conf.xml ]]; then

@@ -142,7 +142,7 @@ sudo ssmsctl node join NodeC 192.168.1.215 nodec1
 2. 更新 configs/sync.conf 中的 Storage Server 连接信息。
 3. 配置 Storage Server 与新节点的双向 SSH key。
 4. 将 configs、scripts、docs 复制到新节点项目目录。
-5. 将正确的 Storage Server 地址写入新节点配置并执行 install_node_client.sh。
+5. 将正确的 Storage Server、管理后台地址写入新节点配置并执行 install_node_client.sh。
 6. 后续 SSH 和 SCP 均由指定的 Storage Server 管理用户发起。
 7. 配置 Storage Server 和新节点两边的 sudoers 免密同步命令。
 8. 验证创建和删除同步脚本可以远程调用。
@@ -160,6 +160,10 @@ sudo ssmsctl node join NodeC 192.168.1.215 nodec1
 ```text
 /home/节点用户/SSMS
 ```
+
+接入脚本会同时更新节点项目目录和 `/etc/ssms` 中的 `system.conf`、
+`sync.conf`、`backend.conf`。其中用户创建请求读取 `sync.conf`，用户列表和
+后台检查读取 `backend.conf`，三者必须指向同一套新环境。
 
 如果项目目录不同：
 
