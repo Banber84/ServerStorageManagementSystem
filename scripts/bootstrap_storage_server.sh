@@ -526,12 +526,7 @@ configure_quota_mount() {
     echo "quota 挂载参数未生效：$mount_options" >&2
     exit 1
   fi
-  if [[ ",$mount_options," == *,quota,* ]] ||
-     quotaon -p "$mount_point" 2>/dev/null | grep -Eqi 'user quota.*(is on|enabled)'; then
-    echo "用户 quota 已启用，跳过重复 quotacheck。"
-  else
-    "$SCRIPT_DIR/quota_manager.sh" enable
-  fi
+  "$SCRIPT_DIR/quota_manager.sh" ensure
 }
 
 build_binaries() {

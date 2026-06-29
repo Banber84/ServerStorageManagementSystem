@@ -11,6 +11,7 @@ usage() {
   cat <<'EOF'
 用法：
   sudo scripts/quota_manager.sh enable
+  sudo scripts/quota_manager.sh ensure
   sudo scripts/quota_manager.sh set USERNAME QUOTA_GB [--no-backend]
   sudo scripts/quota_manager.sh report
 
@@ -28,40 +29,93 @@ fi
 source "$CONFIG_FILE"
 
 COMMAND="${1:-}"
-MOUNT_POINT="$(findmnt -no TARGET --target "$STORAGE_ROOT")"
+if [[ "${STORAGE_ROOT:-}" != /* ]]; then
+  echo "STORAGE_ROOT 必须是绝对路径：${STORAGE_ROOT:-<empty>}" >&2
+  exit 1
+fi
+MOUNT_POINT="$(findmnt -no TARGET --target "$STORAGE_ROOT" 2>/dev/null || true)"
+if [[ -z "$MOUNT_POINT" ]]; then
+  echo "无法识别 STORAGE_ROOT 所在挂载点：$STORAGE_ROOT" >&2
+  exit 1
+fi
 
 run_quota_cmd() {
   "$@" 2> >(grep -v 'Cannot stat() mounted device tmpfs' >&2)
 }
 
+quota_mount_options_ready() {
+  local options
+  options="$(findmnt -no OPTIONS --target "$STORAGE_ROOT" 2>/dev/null || true)"
+  [[ ",$options," == *,usrquota,* && ",$options," == *,grpquota,* ]]
+}
+
 quota_is_active() {
   local options state
-  options="$(findmnt -no OPTIONS --target "$STORAGE_ROOT")"
+  options="$(findmnt -no OPTIONS --target "$STORAGE_ROOT" 2>/dev/null || true)"
   if [[ ",$options," == *,quota,* ]]; then
     return 0
   fi
   state="$(quotaon -p "$MOUNT_POINT" 2>/dev/null || true)"
-  grep -Eqi 'user quota.*(is on|enabled)' <<< "$state"
+  grep -Eqi 'user quota.*(is on|enabled)' <<< "$state" && return 0
+  run_quota_cmd repquota "$MOUNT_POINT" >/dev/null 2>&1
+}
+
+quota_setup_hint() {
+  local filesystem_type mount_options source
+  source="$(findmnt -no SOURCE --target "$STORAGE_ROOT" 2>/dev/null || true)"
+  filesystem_type="$(findmnt -no FSTYPE --target "$STORAGE_ROOT" 2>/dev/null || true)"
+  mount_options="$(findmnt -no OPTIONS --target "$STORAGE_ROOT" 2>/dev/null || true)"
+  cat <<EOF
+当前 quota 未就绪：
+  STORAGE_ROOT: $STORAGE_ROOT
+  挂载源: ${source:-unknown}
+  挂载点: $MOUNT_POINT
+  文件系统: ${filesystem_type:-unknown}
+  挂载参数: ${mount_options:-unknown}
+
+请先让 $MOUNT_POINT 启用 usrquota,grpquota 后重试：
+  1. 编辑 /etc/fstab 中挂载点为 $MOUNT_POINT 的条目，给第四列追加 usrquota,grpquota。
+  2. 执行：sudo mount -o remount $MOUNT_POINT
+  3. 执行：sudo ssmsctl quota enable
+
+如果该文件系统不是 ext4，请使用适合该文件系统的 quota 配置方式，或重新部署时使用 --skip-quota。
+EOF
+}
+
+enable_quota() {
+  if ! quota_mount_options_ready; then
+    quota_setup_hint >&2
+    exit 1
+  fi
+  if quota_is_active; then
+    echo "$MOUNT_POINT 的用户 quota 已启用，跳过重复 quotacheck。"
+    run_quota_cmd repquota "$MOUNT_POINT"
+    return
+  fi
+  run_quota_cmd quotacheck -cum "$MOUNT_POINT"
+  run_quota_cmd quotaon -uv "$MOUNT_POINT"
+  run_quota_cmd repquota "$MOUNT_POINT"
+}
+
+ensure_quota_ready() {
+  if quota_is_active; then
+    return
+  fi
+  if quota_mount_options_ready; then
+    echo "$MOUNT_POINT 已有 quota 挂载参数，正在初始化 quota 文件。"
+    enable_quota
+    return
+  fi
+  quota_setup_hint >&2
+  exit 1
 }
 
 case "$COMMAND" in
   enable)
-    if ! findmnt -no OPTIONS --target "$STORAGE_ROOT" | grep -Eq '(^|,)usrquota(,|$)'; then
-      cat <<EOF
-当前 $MOUNT_POINT 未启用 quota 挂载参数。
-请在 /etc/fstab 中为 $STORAGE_ROOT 所在文件系统增加 usrquota,grpquota，然后重新挂载：
-  sudo mount -o remount $MOUNT_POINT
-EOF
-      exit 1
-    fi
-    if quota_is_active; then
-      echo "$MOUNT_POINT 的用户 quota 已启用，跳过重复 quotacheck。"
-      run_quota_cmd repquota "$MOUNT_POINT"
-      exit 0
-    fi
-    run_quota_cmd quotacheck -cum "$MOUNT_POINT"
-    run_quota_cmd quotaon -uv "$MOUNT_POINT"
-    run_quota_cmd repquota "$MOUNT_POINT"
+    enable_quota
+    ;;
+  ensure)
+    ensure_quota_ready
     ;;
   set)
     USERNAME="${2:-}"
@@ -90,6 +144,7 @@ EOF
       echo "配额必须是正整数，单位为 GB。"
       exit 1
     fi
+    ensure_quota_ready
     BLOCKS=$((QUOTA_GB * 1024 * 1024))
     SOFT=$((BLOCKS * 95 / 100))
     run_quota_cmd setquota -u "$USERNAME" "$SOFT" "$BLOCKS" 0 0 "$MOUNT_POINT"
@@ -104,6 +159,7 @@ EOF
     fi
     ;;
   report)
+    ensure_quota_ready
     run_quota_cmd repquota "$MOUNT_POINT"
     ;;
   -h|--help|"")

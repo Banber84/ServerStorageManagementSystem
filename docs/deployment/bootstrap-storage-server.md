@@ -18,9 +18,11 @@
 进入项目目录：
 
 ```bash
-cd ~/ServerStorageManagementSystem
+cd ~/SSMS
 chmod +x scripts/*.sh scripts/ssmsctl
 ```
+
+如果你的目录名不是 `SSMS`，进入实际项目目录即可。
 
 使用新服务器的固定 IP 执行：
 
@@ -96,6 +98,32 @@ sudo scripts/ssmsctl system bootstrap \
 ```
 
 然后按文件系统要求手工配置。
+
+如果创建用户时出现：
+
+```text
+setquota: Cannot open quotafile //aquota.user: No such file or directory
+setquota: Not all specified mountpoints are using quota.
+```
+
+说明用户创建流程已经走到配额设置阶段，但 `STORAGE_ROOT` 所在文件系统的 quota
+尚未启用。先执行：
+
+```bash
+source /etc/ssms/system.conf
+findmnt -no SOURCE,TARGET,FSTYPE,OPTIONS --target "$STORAGE_ROOT"
+```
+
+确认 `TARGET` 后，为该挂载点启用 `usrquota,grpquota`，再执行：
+
+```bash
+sudo mount -o remount TARGET
+sudo ssmsctl quota enable
+sudo ssmsctl quota set alice 10
+sudo ssmsctl usage sync
+```
+
+其中 `TARGET` 替换为实际挂载点，例如 `/` 或 `/srv`。
 
 ## Go 下载配置
 

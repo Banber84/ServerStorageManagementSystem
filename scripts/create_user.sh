@@ -79,6 +79,8 @@ fi
 
 install -d -o root -g "$STORAGE_GROUP" -m 0711 "$STORAGE_ROOT"
 
+"$SCRIPT_DIR/quota_manager.sh" ensure
+
 USER_HOME="$STORAGE_ROOT/$USERNAME"
 
 if ! id "$USERNAME" >/dev/null 2>&1; then

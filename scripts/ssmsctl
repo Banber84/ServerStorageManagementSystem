@@ -143,6 +143,7 @@ resolve_project_root() {
   if [[ -n "$invoking_user" ]] && command -v getent >/dev/null 2>&1; then
     invoking_home="$(getent passwd "$invoking_user" | cut -d: -f6)"
     if [[ -n "$invoking_home" ]]; then
+      candidates+=("$invoking_home/SSMS")
       candidates+=("$invoking_home/ServerStorageManagementSystem")
     fi
   fi
