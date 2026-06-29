@@ -53,6 +53,14 @@ fi
 
 install -d -m 0755 "$APP_DIR" /etc/ssms
 
+if [[ -z "$APP_DIR" || "$APP_DIR" == "/" ]]; then
+  echo "APP_DIR 配置危险：$APP_DIR" >&2
+  exit 1
+fi
+for managed_path in server agent docs configs scripts README.md LICENSE; do
+  rm -rf "$APP_DIR/$managed_path"
+done
+
 cp -R \
   "$PROJECT_ROOT/server" \
   "$PROJECT_ROOT/agent" \

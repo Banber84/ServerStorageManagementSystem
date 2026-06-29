@@ -49,10 +49,21 @@ grep -qF 'install_smb_gateway.sh' "$PROJECT_ROOT/scripts/leave_node.sh"
 grep -qF 'SMB 网关卸载检查失败' "$PROJECT_ROOT/scripts/leave_node.sh"
 grep -qF 'OnUnitActiveSec=1min' "$PROJECT_ROOT/configs/storage-usage-sync.timer"
 grep -qF '<meta http-equiv="refresh" content="30">' "$PROJECT_ROOT/server/templates/storage.html"
+grep -qF 'quota_manager.sh" ensure' "$PROJECT_ROOT/scripts/create_user.sh"
+grep -qF 'ensure_quota_ready' "$PROJECT_ROOT/scripts/quota_manager.sh"
+grep -qF 'quota_setup_hint' "$PROJECT_ROOT/scripts/quota_manager.sh"
+if grep -qF '*,quota,*' "$PROJECT_ROOT/scripts/quota_manager.sh"; then
+  echo "quota_manager.sh 不能只根据 mount options 中的 quota 判断用户 quota 已启用。" >&2
+  exit 1
+fi
 grep -qF 'systemctl restart storage-usage-sync.timer' "$PROJECT_ROOT/scripts/install_management_server.sh"
 grep -qF 'systemctl restart storage-agent' "$PROJECT_ROOT/scripts/install_storage_agent.sh"
 grep -qF 'system:bootstrap' "$PROJECT_ROOT/scripts/ssmsctl"
 grep -qF 'configure_quota_mount' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
+grep -qF -- '--check-only' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
+grep -qF 'run_preflight_check' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
+grep -qF 'ensure_bootstrap_auth_config' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
+grep -qF '已恢复 /etc/fstab' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'go env -w "GOPROXY=$GO_PROXY" "GOSUMDB=$GO_SUM_DB"' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'BACKEND_CONFIG_FILE=/etc/ssms/backend.conf' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'BOOTSTRAP_MODE=1' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
@@ -61,6 +72,11 @@ grep -qF '"$CONFIG_FILE" -ef /etc/ssms/system.conf' "$PROJECT_ROOT/scripts/insta
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_node_client.sh"
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_storage_server.sh"
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_management_server.sh"
+grep -qF 'candidates+=("$invoking_home/SSMS")' "$PROJECT_ROOT/scripts/ssmsctl"
+grep -qF 'for managed_path in server agent docs configs scripts README.md LICENSE' "$PROJECT_ROOT/scripts/install_management_server.sh"
+grep -qF 'SSMS_AUTH_ENABLED' "$PROJECT_ROOT/configs/site.env.example"
+grep -qF 'SSMS_ADMIN_PASSWORD' "$PROJECT_ROOT/scripts/apply_site_config.sh"
+grep -qF 'SSMS_SESSION_SECRET' "$PROJECT_ROOT/scripts/apply_site_config.sh"
 
 echo "检查文档分类。"
 if find "$PROJECT_ROOT/docs/deployment" -maxdepth 1 -type f -name '*test-report.md' -print -quit | grep -q .; then
@@ -77,8 +93,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cp "$PROJECT_ROOT/configs/site.env.example" "$tmp_dir/site.env"
 cat > "$tmp_dir/nodes.conf" <<'EOF'
 # test nodes
-NodeA 192.168.1.122 nodea1 /home/nodea1/ServerStorageManagementSystem
-nodeC 192.168.1.215 nodec1 /home/nodec1/ServerStorageManagementSystem
+NodeA 192.168.1.122 nodea1 /home/nodea1/SSMS
+nodeC 192.168.1.215 nodec1 /home/nodec1/SSMS
 EOF
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/scripts/lib/nodes_config.sh"
@@ -97,6 +113,11 @@ BACKEND_API_TIMEOUT="5"
 SSMS_SERVER_ADDR="0.0.0.0:${SSMS_MANAGEMENT_PORT}"
 SSMS_DB_PATH="/var/lib/ssms/server-storage.db"
 GIN_MODE="release"
+SSMS_AUTH_ENABLED="1"
+SSMS_ADMIN_USERNAME="admin"
+SSMS_ADMIN_PASSWORD="test-password"
+SSMS_ADMIN_PASSWORD_HASH=""
+SSMS_SESSION_SECRET="test-session-secret"
 STORAGE_SERVER="192.168.1.187"
 STORAGE_ROOT="/srv/samba/users"
 STORAGE_GROUP="storageusers"
@@ -106,20 +127,23 @@ SMB_WORKGROUP="WORKGROUP"
 SMB_NETBIOS_NAME="SSMS-STORAGE"
 STORAGE_SYNC_HOST="192.168.1.187"
 STORAGE_SYNC_USER="a2"
-STORAGE_SYNC_PROJECT_DIR="/home/a2/ServerStorageManagementSystem"
+STORAGE_SYNC_PROJECT_DIR="/home/a2/SSMS"
 DEFAULT_SYNC_QUOTA_GB="1"
 SSMS_AGENT_NAME="NodeA"
 SSMS_AGENT_ADDRESS="192.168.1.188"
 SSMS_AGENT_DISK="/"
 SSMS_AGENT_INTERVAL="30s"
 SSMS_NODES="
-NodeA 192.168.1.188 nodea1 /home/nodea1/ServerStorageManagementSystem
+NodeA 192.168.1.188 nodea1 /home/nodea1/SSMS
 "
 EOF
 "$PROJECT_ROOT/scripts/apply_site_config.sh" --config "$tmp_dir/site-valid.env" --output-dir "$tmp_dir/generated" >/dev/null
 grep -qF 'BACKEND_API_BASE=http://192.168.1.187:8080' "$tmp_dir/generated/backend.conf"
 grep -qF 'BACKEND_SYNC_ENABLED=1' "$tmp_dir/generated/backend.conf"
 grep -qF 'BACKEND_API_TIMEOUT=5' "$tmp_dir/generated/backend.conf"
+grep -qF 'SSMS_AUTH_ENABLED=1' "$tmp_dir/generated/storage-server.env"
+grep -qF 'SSMS_ADMIN_USERNAME=admin' "$tmp_dir/generated/storage-server.env"
+grep -qF 'SSMS_SESSION_SECRET=test-session-secret' "$tmp_dir/generated/storage-server.env"
 
 sed '/^NodeA 192\.168\.1\.188 /d' "$tmp_dir/site-valid.env" > "$tmp_dir/site-empty.env"
 "$PROJECT_ROOT/scripts/apply_site_config.sh" --config "$tmp_dir/site-empty.env" --output-dir "$tmp_dir/generated-empty" >/dev/null

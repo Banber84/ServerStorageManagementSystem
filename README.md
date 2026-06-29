@@ -57,7 +57,27 @@ flowchart TB
 
 ## 快速启动
 
-开发运行：
+全新 Ubuntu 虚拟机推荐直接使用一键部署。进入项目目录后先做预检查：
+
+```bash
+cd ~/SSMS
+chmod +x scripts/*.sh scripts/ssmsctl
+sudo scripts/ssmsctl system bootstrap --host 192.168.1.230 --check-only
+```
+
+如果项目目录名不是 `SSMS`，进入实际项目目录执行即可。
+
+预检查通过后执行部署：
+
+```bash
+sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
+```
+
+脚本会安装 Samba、quota、管理后台、Storage Agent、用量同步定时器和
+`ssmsctl`，并生成管理后台初始管理员密码。部署说明见
+[docs/deployment/bootstrap-storage-server.md](docs/deployment/bootstrap-storage-server.md)。
+
+开发运行管理后台：
 
 ```bash
 go run ./server -addr 0.0.0.0:8080 -db server-storage.db
@@ -69,7 +89,7 @@ go run ./server -addr 0.0.0.0:8080 -db server-storage.db
 http://服务器IP:8080
 ```
 
-生产或演示环境建议使用安装脚本生成 systemd 服务：
+已有配置的生产或演示环境也可以使用安装脚本生成 systemd 服务：
 
 ```bash
 sudo scripts/install_management_server.sh
@@ -96,18 +116,10 @@ sudo ssmsctl user create alice --quota-gb 10
 sudo ssmsctl quota set alice 20
 sudo ssmsctl node join NodeC 192.168.1.215 nodec1
 sudo ssmsctl usage sync
+sudo ssmsctl system bootstrap --host 192.168.1.230 --check-only
 ```
 
 完整说明见 [docs/deployment/ssmsctl.md](docs/deployment/ssmsctl.md)。
-
-全新 Ubuntu 虚拟机可以自动部署为 Storage Server：
-
-```bash
-sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
-```
-
-部署说明见
-[docs/deployment/bootstrap-storage-server.md](docs/deployment/bootstrap-storage-server.md)。
 
 ## 常用文档
 

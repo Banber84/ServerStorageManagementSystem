@@ -8,6 +8,20 @@ http://127.0.0.1:8080
 
 除页面表单接口外，REST API 请求和响应均使用 JSON。
 
+## Web 管理登录
+
+启用 `SSMS_AUTH_ENABLED=1` 后，浏览器管理页面和页面表单需要先访问 `/login`
+完成管理员登录。登录使用 `SSMS_ADMIN_USERNAME` 和 `SSMS_ADMIN_PASSWORD`
+或 `SSMS_ADMIN_PASSWORD_HASH`，会话 Cookie 由 `SSMS_SESSION_SECRET` 签名。
+
+为保持 Agent 和系统脚本兼容，REST API 当前仍按原方式开放：
+
+- `GET /api/health`
+- `POST /api/servers/report`
+- 用户、配额、存储统计和日志同步接口
+
+如需把 REST API 也对外暴露，应在后续版本增加脚本专用 token 或反向代理鉴权。
+
 ## 健康检查
 
 ### `GET /api/health`

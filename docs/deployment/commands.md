@@ -12,10 +12,12 @@ ssmsctl system status
 ## 全新 Storage Server 自动部署
 
 ```bash
+sudo scripts/ssmsctl system bootstrap --host 192.168.1.230 --check-only
 sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 ```
 
-该命令用于空白 Ubuntu 虚拟机，不执行旧服务器数据迁移。
+该命令用于空白 Ubuntu 虚拟机，不执行旧服务器数据迁移。`--check-only`
+只执行环境和配置预检查。
 
 ## WinPC 上的 Ubuntu 26.04 基础检查
 

@@ -107,8 +107,11 @@ ssmsctl system check
 在全新的 Ubuntu 虚拟机自动部署 Storage Server：
 
 ```bash
+sudo scripts/ssmsctl system bootstrap --host 192.168.1.230 --check-only
 sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 ```
+
+`--check-only` 只做环境和配置预检查，不安装依赖、不启动服务、不修改系统文件。
 
 完整说明见 `docs/deployment/bootstrap-storage-server.md`。
 
@@ -126,11 +129,12 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 2. `ssmsctl` 自身所在的项目目录。
 3. 当前工作目录。
 4. `/etc/ssms/sync.conf` 中的 Storage Server 项目目录。
-5. 当前管理用户的 `~/ServerStorageManagementSystem`。
-6. `/opt/ssms`。
+5. 当前管理用户的 `~/SSMS`。
+6. 当前管理用户的旧目录 `~/ServerStorageManagementSystem`，仅用于兼容历史部署。
+7. `/opt/ssms`。
 
 需要临时指定项目时：
 
 ```bash
-SSMS_PROJECT_ROOT=/home/a2/ServerStorageManagementSystem ssmsctl system check
+SSMS_PROJECT_ROOT=/home/a2/SSMS ssmsctl system check
 ```

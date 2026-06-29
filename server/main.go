@@ -22,7 +22,16 @@ func main() {
 	defer db.Close()
 
 	store := service.NewStore(db)
-	router := api.NewRouter(store)
+	authConfig, err := api.AuthConfigFromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if authConfig.Enabled {
+		log.Printf("web admin authentication enabled for user %s", authConfig.Username)
+	} else {
+		log.Print("web admin authentication disabled")
+	}
+	router := api.NewRouterWithAuth(store, authConfig)
 
 	log.Printf("management server listening on %s", *addr)
 	if err := router.Run(*addr); err != nil {

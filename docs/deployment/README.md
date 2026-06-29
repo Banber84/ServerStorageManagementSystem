@@ -6,8 +6,8 @@
 ## 推荐阅读顺序
 
 1. [../design/runbook.md](../design/runbook.md)：后端、Agent、systemd 和接口验证总入口。
-2. [ssmsctl.md](ssmsctl.md)：统一管理命令。
-3. [bootstrap-storage-server.md](bootstrap-storage-server.md)：全新 Storage Server 自动部署。
+2. [bootstrap-storage-server.md](bootstrap-storage-server.md)：全新 Storage Server 自动部署。
+3. [ssmsctl.md](ssmsctl.md)：统一管理命令。
 4. [storage-server.md](storage-server.md)：Storage Server 手工部署。
 5. [node-client.md](node-client.md)：登录节点客户端部署。
 6. [smb-gateway.md](smb-gateway.md)：SMB Gateway 部署和验证。

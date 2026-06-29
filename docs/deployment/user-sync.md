@@ -70,10 +70,10 @@ sudo visudo
 示例：
 
 ```text
-nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/ServerStorageManagementSystem/scripts/create_node_user.sh
-nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/ServerStorageManagementSystem/scripts/create_node_user.sh
-nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/ServerStorageManagementSystem/scripts/delete_node_user.sh
-nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/ServerStorageManagementSystem/scripts/delete_node_user.sh
+nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/SSMS/scripts/create_node_user.sh
+nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/SSMS/scripts/create_node_user.sh
+nodea1 ALL=(ALL) NOPASSWD: /home/nodea1/SSMS/scripts/delete_node_user.sh
+nodeb1 ALL=(ALL) NOPASSWD: /home/nodeb1/SSMS/scripts/delete_node_user.sh
 ```
 
 如果项目目录不同，请改成实际路径。
@@ -97,8 +97,8 @@ sudo visudo
 示例：
 
 ```text
-a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh
-a2 ALL=(ALL) NOPASSWD: /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh
+a2 ALL=(ALL) NOPASSWD: /home/a2/SSMS/scripts/sync_user.sh
+a2 ALL=(ALL) NOPASSWD: /home/a2/SSMS/scripts/sync_delete_user.sh
 ```
 
 ## 配置节点清单
@@ -119,8 +119,8 @@ cat /etc/ssms/nodes.conf
 示例：
 
 ```text
-NodeA 192.168.1.188 nodea1 /home/nodea1/ServerStorageManagementSystem
-NodeB 192.168.1.189 nodeb1 /home/nodeb1/ServerStorageManagementSystem
+NodeA 192.168.1.188 nodea1 /home/nodea1/SSMS
+NodeB 192.168.1.189 nodeb1 /home/nodeb1/SSMS
 ```
 
 日常增删节点应使用 `ssmsctl node join/leave`，它会同时更新运行时清单、
@@ -158,16 +158,16 @@ sudo ssmsctl node join NodeC 192.168.1.215 nodec1
 默认新节点项目目录为：
 
 ```text
-/home/节点用户/ServerStorageManagementSystem
+/home/节点用户/SSMS
 ```
 
 如果项目目录不同：
 
 ```bash
 sudo ssmsctl node join NodeC 192.168.1.215 nodec1 \
-  --node-project /home/nodec1/ServerStorageManagementSystem
+  --node-project /home/nodec1/SSMS
 # 原脚本：sudo scripts/join_node.sh NodeC 192.168.1.215 nodec1 \
-#   --node-project /home/nodec1/ServerStorageManagementSystem
+#   --node-project /home/nodec1/SSMS
 ```
 
 如果 Storage Server 的 SSH 用户或项目目录不同：
@@ -176,11 +176,11 @@ sudo ssmsctl node join NodeC 192.168.1.215 nodec1 \
 sudo ssmsctl node join NodeC 192.168.1.215 nodec1 \
   --storage-user a2 \
   --storage-host 192.168.1.187 \
-  --storage-project /home/a2/ServerStorageManagementSystem
+  --storage-project /home/a2/SSMS
 # 原脚本：sudo scripts/join_node.sh NodeC 192.168.1.215 nodec1 \
 #   --storage-user a2 \
 #   --storage-host 192.168.1.187 \
-#   --storage-project /home/a2/ServerStorageManagementSystem
+#   --storage-project /home/a2/SSMS
 ```
 
 脚本执行过程中，如果新节点还没有配置 SSH key，第一次连接需要输入新节点用户密码。安装客户端和配置远端 sudoers时，按提示输入新节点用户的 sudo 密码。
@@ -210,7 +210,7 @@ sudo ssmsctl node join NodeC 192.168.1.215 nodec1 --skip-existing-users
 
 ```bash
 ssh nodec1@192.168.1.215
-cd ~/ServerStorageManagementSystem
+cd ~/SSMS
 ssmsctl user request-create joincheck --quota-gb 1
 # 原脚本：scripts/request_user_sync.sh joincheck --quota-gb 1
 ```
@@ -297,7 +297,7 @@ ssmsctl user request-create alice --quota-gb 1
 验证 Storage Server 远程调用：
 
 ```bash
-ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_user.sh --help'
+ssh a2@192.168.1.187 'sudo /home/a2/SSMS/scripts/sync_user.sh --help'
 ```
 
 如果该命令不需要输入密码，并且直接显示 `sync_user.sh` 用法，说明节点发起同步所需的 SSH 和 sudo 权限已配置完成。
@@ -351,7 +351,7 @@ ssmsctl user request-delete alice
 验证 Storage Server 删除远程调用：
 
 ```bash
-ssh a2@192.168.1.187 'sudo /home/a2/ServerStorageManagementSystem/scripts/sync_delete_user.sh --help'
+ssh a2@192.168.1.187 'sudo /home/a2/SSMS/scripts/sync_delete_user.sh --help'
 ```
 
 ## 只同步 Storage Server

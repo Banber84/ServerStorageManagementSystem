@@ -89,6 +89,11 @@ SSMS_MANAGEMENT_URL="${SSMS_MANAGEMENT_URL:-}"
 SSMS_SERVER_ADDR="${SSMS_SERVER_ADDR:-0.0.0.0:${SSMS_MANAGEMENT_PORT}}"
 SSMS_DB_PATH="${SSMS_DB_PATH:-/var/lib/ssms/server-storage.db}"
 GIN_MODE="${GIN_MODE:-release}"
+SSMS_AUTH_ENABLED="${SSMS_AUTH_ENABLED:-0}"
+SSMS_ADMIN_USERNAME="${SSMS_ADMIN_USERNAME:-admin}"
+SSMS_ADMIN_PASSWORD="${SSMS_ADMIN_PASSWORD:-}"
+SSMS_ADMIN_PASSWORD_HASH="${SSMS_ADMIN_PASSWORD_HASH:-}"
+SSMS_SESSION_SECRET="${SSMS_SESSION_SECRET:-}"
 
 STORAGE_SERVER="${STORAGE_SERVER:-}"
 STORAGE_ROOT="${STORAGE_ROOT:-/srv/samba/users}"
@@ -111,6 +116,7 @@ SSMS_SERVER_URL="${SSMS_SERVER_URL:-}"
 BACKEND_SYNC_ENABLED="${BACKEND_SYNC_ENABLED:-1}"
 BACKEND_API_TIMEOUT="${BACKEND_API_TIMEOUT:-5}"
 
+auth_enabled_lc="$(printf '%s' "$SSMS_AUTH_ENABLED" | tr '[:upper:]' '[:lower:]')"
 validation_failed=0
 require_value SSMS_MANAGEMENT_HOST "${SSMS_MANAGEMENT_HOST:-}" || validation_failed=1
 require_value STORAGE_SERVER "$STORAGE_SERVER" || validation_failed=1
@@ -119,6 +125,24 @@ require_value STORAGE_SYNC_USER "$STORAGE_SYNC_USER" || validation_failed=1
 require_value STORAGE_SYNC_PROJECT_DIR "$STORAGE_SYNC_PROJECT_DIR" || validation_failed=1
 require_value SSMS_AGENT_NAME "$SSMS_AGENT_NAME" || validation_failed=1
 require_value SSMS_AGENT_ADDRESS "$SSMS_AGENT_ADDRESS" || validation_failed=1
+case "$auth_enabled_lc" in
+  1|true|yes|on)
+    SSMS_AUTH_ENABLED="1"
+    require_value SSMS_ADMIN_USERNAME "$SSMS_ADMIN_USERNAME" || validation_failed=1
+    if is_blank "$SSMS_ADMIN_PASSWORD" && is_blank "$SSMS_ADMIN_PASSWORD_HASH"; then
+      echo "site.env 启用了 SSMS_AUTH_ENABLED，但缺少 SSMS_ADMIN_PASSWORD 或 SSMS_ADMIN_PASSWORD_HASH" >&2
+      validation_failed=1
+    fi
+    require_value SSMS_SESSION_SECRET "$SSMS_SESSION_SECRET" || validation_failed=1
+    ;;
+  0|false|no|off)
+    SSMS_AUTH_ENABLED="0"
+    ;;
+  *)
+    echo "site.env 中 SSMS_AUTH_ENABLED 只能为 1/0、true/false、yes/no 或 on/off" >&2
+    validation_failed=1
+    ;;
+esac
 
 if is_blank "$SSMS_MANAGEMENT_URL"; then
   SSMS_MANAGEMENT_URL="http://${SSMS_MANAGEMENT_HOST}:${SSMS_MANAGEMENT_PORT}"
@@ -198,6 +222,12 @@ write_header "$SERVER_ENV"
   write_kv SSMS_SERVER_ADDR "$SSMS_SERVER_ADDR"
   write_kv SSMS_DB_PATH "$SSMS_DB_PATH"
   write_kv GIN_MODE "$GIN_MODE"
+  echo
+  write_kv SSMS_AUTH_ENABLED "$SSMS_AUTH_ENABLED"
+  write_kv SSMS_ADMIN_USERNAME "$SSMS_ADMIN_USERNAME"
+  write_kv SSMS_ADMIN_PASSWORD "$SSMS_ADMIN_PASSWORD"
+  write_kv SSMS_ADMIN_PASSWORD_HASH "$SSMS_ADMIN_PASSWORD_HASH"
+  write_kv SSMS_SESSION_SECRET "$SSMS_SESSION_SECRET"
 } >> "$SERVER_ENV"
 
 AGENT_ENV="$OUTPUT_DIR/storage-agent.env"

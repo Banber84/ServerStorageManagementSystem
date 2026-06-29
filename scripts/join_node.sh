@@ -31,7 +31,7 @@ usage() {
   8. 验证创建/删除同步脚本可远程调用。
 
 选项：
-  --node-project DIR       新节点项目目录，默认 /home/NODE_USER/ServerStorageManagementSystem
+  --node-project DIR       新节点项目目录，默认 /home/NODE_USER/SSMS
   --storage-user USER      Storage Server SSH 用户，默认 sudo 发起用户
   --storage-host HOST      Storage Server 地址，默认读取 STORAGE_SERVER
   --storage-project DIR    Storage Server 项目目录，默认当前项目目录
@@ -77,7 +77,7 @@ if [[ -z "$STORAGE_USER" || "$STORAGE_USER" == "root" ]]; then
 fi
 STORAGE_HOST="${STORAGE_SERVER:-}"
 STORAGE_PROJECT_DIR="$PROJECT_ROOT"
-NODE_PROJECT_DIR="/home/$NODE_USER/ServerStorageManagementSystem"
+NODE_PROJECT_DIR="/home/$NODE_USER/SSMS"
 MANAGEMENT_URL=""
 AGENT_BINARY=""
 SKIP_COPY="0"

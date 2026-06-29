@@ -18,6 +18,12 @@
       <a class="active" href="/servers">节点监控</a>
       <a href="/logs">系统日志</a>
     </nav>
+    {{ if .AuthEnabled }}
+      <form class="sidebar-footer" method="post" action="/logout">
+        <span>管理员：{{ .AdminUsername }}</span>
+        <button class="btn ghost" type="submit">退出登录</button>
+      </form>
+    {{ end }}
   </aside>
 
   <main class="content">
