@@ -1,5 +1,8 @@
 # 登录节点部署文档
 
+本文中的 IP 和用户名均为示例，实际值以 `configs/site.env` 和
+`/etc/ssms` 运行配置为准。
+
 以下步骤需要在 NodeA 和 NodeB 上分别执行。
 
 ## 1. 环境要求
@@ -22,7 +25,7 @@ NodeB: 192.168.56.12
 安装前编辑 `configs/system.conf`：
 
 ```bash
-STORAGE_SERVER="192.168.56.10"
+STORAGE_SERVER="192.168.1.221"
 MOUNT_POINT_NAME="storage"
 ```
 
@@ -54,7 +57,7 @@ sudo scripts/create_node_user.sh alice
 用户 `alice` 登录 NodeA 或 NodeB 后，系统会自动挂载：
 
 ```text
-//192.168.56.10/alice -> /home/alice/storage
+//192.168.1.221/alice -> /home/alice/storage
 ```
 
 挂载参数配置在：
@@ -69,7 +72,7 @@ configs/pam_mount.conf.xml
 
 ```bash
 sudo mkdir -p /mnt/ssms-alice
-sudo mount -t cifs //192.168.56.10/alice /mnt/ssms-alice \
+sudo mount -t cifs //192.168.1.221/alice /mnt/ssms-alice \
   -o username=alice,vers=3.0,sec=ntlmssp,uid=$(id -u alice),gid=$(id -g alice),file_mode=0600,dir_mode=0700
 mount | grep /mnt/ssms-alice
 sudo -u alice ls -l /mnt/ssms-alice

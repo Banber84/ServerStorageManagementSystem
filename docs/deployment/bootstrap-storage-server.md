@@ -81,6 +81,13 @@ GOPROXY=https://goproxy.cn,direct
 GOSUMDB=sum.golang.google.cn
 ```
 
+bootstrap 会将这两个值写入管理用户的 `go env`，后续手工执行 `go build` 也会
+默认使用相同镜像。查看当前配置：
+
+```bash
+go env GOPROXY GOSUMDB
+```
+
 可以覆盖：
 
 ```bash

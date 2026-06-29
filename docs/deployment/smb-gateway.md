@@ -1,5 +1,8 @@
 # 登录节点 SMB 入口网关
 
+本文中的 IP、节点名和用户名均为示例，实际部署以 `site.env` 和
+`ssmsctl node list` 为准。
+
 ## 目标
 
 Windows 资源管理器或 macOS 可以连接任意登录节点 IP，并访问 Storage Server
@@ -93,49 +96,18 @@ sudo ssmsctl gateway uninstall
 
 `leave_node.sh` 会自动卸载该节点网关。
 
-## NodeC 离开与重新加入测试
+## 节点生命周期联动
 
-所有命令均在 Storage Server 上执行。先让 NodeC 离开：
-
-```bash
-sudo ssmsctl node leave NodeC --storage-user a2
-# 原脚本：sudo scripts/leave_node.sh NodeC --storage-user a2
-```
-
-脚本会先在 NodeC 停止并卸载 Gateway，确认 socket、service 和 systemd unit
-均无残留，然后清理 Agent、SSH key、节点清单和后台记录。NodeC 本地用户及
-Storage Server 上的共享数据不会被删除。
-
-确认离开结果：
+`ssmsctl node join` 默认安装并检查 Gateway，`ssmsctl node leave` 会在移除
+节点前停止并卸载 Gateway。日常查看节点入口：
 
 ```bash
-grep -w NodeC configs/nodes.conf /etc/ssms/nodes.conf || echo "节点清单已清理"
-ssh nodec1@192.168.1.215 \
-  'systemctl is-active ssms-smb-gateway.socket || true; sudo ss -ltnp "sport = :445"'
+ssmsctl gateway status NODE_NAME
 ```
 
-重新接入 NodeC：
-
-```bash
-sudo ssmsctl node join NodeC 192.168.1.215 nodec1 \
-  --storage-user a2 \
-  --storage-host 192.168.1.187 \
-  --storage-project /home/a2/ServerStorageManagementSystem
-# 原脚本：sudo scripts/join_node.sh NodeC 192.168.1.215 nodec1 \
-#   --storage-user a2 \
-#   --storage-host 192.168.1.187 \
-#   --storage-project /home/a2/ServerStorageManagementSystem
-```
-
-确认重新加入结果：
-
-```bash
-ssh nodec1@192.168.1.215 \
-  'systemctl is-active ssms-smb-gateway.socket; sudo ss -ltnp "sport = :445"'
-```
-
-最后从 Windows 资源管理器访问 `\\192.168.1.215\alice`，确认 Gateway
-仍使用 Storage Server 的 Samba 账号并能看到原有文件。
+该状态命令会显示 socket、service、转发目标和 TCP 445 监听状态。节点接入
+与退出的完整实测过程见
+[`nodec-integration-test-report.md`](../reports/nodec-integration-test-report.md)。
 
 ## 限制
 
@@ -148,14 +120,8 @@ ssh nodec1@192.168.1.215 \
   用户前可执行 `net use * /delete /y`，正常使用建议一个 Windows 用户对应
   一个存储用户。
 
-## 实测记录
+## 验收记录
 
-```text
-测试日期：2026-06-27
-NodeA：192.168.1.122，Windows 资源管理器访问通过
-NodeB：192.168.1.125，Windows 资源管理器访问通过
-NodeC：192.168.1.215，Windows 资源管理器访问通过
-后端存储：192.168.1.187
-```
-
-三个入口均使用 Storage Server 上的 Samba 账号认证，并访问同一份用户数据。
+NodeA、NodeB、NodeC 的 Windows 资源管理器访问结果保存在
+[`nodec-integration-test-report.md`](../reports/nodec-integration-test-report.md)，
+功能说明不再复制具体测试日期和终端记录。

@@ -1,5 +1,7 @@
 # 新 Storage Server 自动部署测试报告
 
+> 本文仅记录历史实测过程与结论。日常操作请查阅 `docs/deployment/`。
+
 ## 基本信息
 
 ```text

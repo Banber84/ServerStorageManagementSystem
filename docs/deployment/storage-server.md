@@ -17,10 +17,10 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 docs/deployment/winpc-ubuntu26.md
 ```
 
-Storage Server 建议使用固定 IP：
+Storage Server 建议使用固定 IP。本文示例：
 
 ```text
-192.168.56.10
+192.168.1.221
 ```
 
 ## 2. 安装 Ubuntu 软件包
@@ -111,7 +111,8 @@ sudo ssmsctl quota enable
 ## 5. 创建存储用户
 
 ```bash
-sudo scripts/create_user.sh alice --quota-gb 10
+sudo ssmsctl user create alice --quota-gb 10
+# 仅排障时直接调用：sudo scripts/create_user.sh alice --quota-gb 10
 ```
 
 脚本会完成以下工作：
@@ -145,13 +146,15 @@ sudo ssmsctl quota set alice 20 --no-backend
 删除账号并归档用户数据：
 
 ```bash
-sudo scripts/delete_user.sh alice
+sudo ssmsctl user delete alice
+# 仅排障时直接调用：sudo scripts/delete_user.sh alice
 ```
 
 删除账号但保留用户数据目录：
 
 ```bash
-sudo scripts/delete_user.sh alice --keep-data
+sudo ssmsctl user delete alice --keep-data
+# 仅排障时直接调用：sudo scripts/delete_user.sh alice --keep-data
 ```
 
 ## 8. 验证 Samba

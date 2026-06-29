@@ -1,6 +1,7 @@
 # 部署文档索引
 
-本目录保存部署说明、命令参考和测试报告。建议优先阅读操作文档；测试报告主要用于追溯实测过程和问题处理。
+本目录只保存功能说明、部署步骤、命令参考和验收方案。
+历史实测过程与结论统一存放在 [`docs/reports/`](../reports/README.md)。
 
 ## 推荐阅读顺序
 
@@ -27,18 +28,13 @@
 | [agentB-integration.md](agentB-integration.md) | A/B 脚本与后台接口对接说明 |
 | [architecture.md](architecture.md) | 部署侧架构简述 |
 
-## 测试报告
+## 测试与报告
 
-| 文档 | 用途 |
-| --- | --- |
-| [demo-test-report.md](demo-test-report.md) | 第一版 demo 与接口测试记录 |
-| [storage-server-test-report.md](storage-server-test-report.md) | Storage Server 单机测试记录 |
-| [full-integration-test-report.md](full-integration-test-report.md) | NodeA / NodeB 联调记录 |
-| [nodec-integration-test-report.md](nodec-integration-test-report.md) | NodeC 接入和回归记录 |
-| [bootstrap-storage-server-test-report.md](bootstrap-storage-server-test-report.md) | 新 Storage Server 自动部署实测 |
+- [testing.md](testing.md)：当前最小验收流程和通过标准。
+- [../reports/README.md](../reports/README.md)：已执行测试的报告索引。
 
 ## 维护原则
 
-- 新的部署步骤优先写入操作文档，不再把同一流程复制到多个测试报告。
-- 测试报告保留实测命令、现象和结论，不作为日常操作入口。
+- 功能原理和部署步骤写入本目录，不混入具体测试日期和终端输出。
+- 测试报告保留实测命令、现象和结论，统一写入 `docs/reports/`。
 - IP 地址、节点名和用户名如属于示例，应明确写成示例；真实环境以 `configs/site.env.example` 和实际配置为准。

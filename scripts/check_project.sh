@@ -53,6 +53,7 @@ grep -qF 'systemctl restart storage-usage-sync.timer' "$PROJECT_ROOT/scripts/ins
 grep -qF 'systemctl restart storage-agent' "$PROJECT_ROOT/scripts/install_storage_agent.sh"
 grep -qF 'system:bootstrap' "$PROJECT_ROOT/scripts/ssmsctl"
 grep -qF 'configure_quota_mount' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
+grep -qF 'go env -w "GOPROXY=$GO_PROXY" "GOSUMDB=$GO_SUM_DB"' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'BACKEND_CONFIG_FILE=/etc/ssms/backend.conf' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'BOOTSTRAP_MODE=1' "$PROJECT_ROOT/scripts/bootstrap_storage_server.sh"
 grep -qF 'quota_is_active' "$PROJECT_ROOT/scripts/quota_manager.sh"
@@ -60,6 +61,15 @@ grep -qF '"$CONFIG_FILE" -ef /etc/ssms/system.conf' "$PROJECT_ROOT/scripts/insta
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_node_client.sh"
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_storage_server.sh"
 grep -qF 'install -m 0755 "$PROJECT_ROOT/scripts/ssmsctl" /usr/local/bin/ssmsctl' "$PROJECT_ROOT/scripts/install_management_server.sh"
+
+echo "检查文档分类。"
+if find "$PROJECT_ROOT/docs/deployment" -maxdepth 1 -type f -name '*test-report.md' -print -quit | grep -q .; then
+  echo "测试报告必须存放在 docs/reports，不应放在 docs/deployment。" >&2
+  exit 1
+fi
+for report in "$PROJECT_ROOT"/docs/reports/*-test-report.md; do
+  grep -qF '本文仅记录历史实测过程与结论' "$report"
+done
 
 echo "检查统一节点配置更新。"
 tmp_dir="$(mktemp -d)"

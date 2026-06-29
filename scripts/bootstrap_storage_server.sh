@@ -249,6 +249,16 @@ install_build_dependencies() {
   command -v gcc >/dev/null 2>&1
 }
 
+configure_go_environment() {
+  local build_user build_home
+  build_user="${ADMIN_USER:-$STORAGE_SYNC_USER}"
+  build_home="$(getent passwd "$build_user" | cut -d: -f6)"
+  sudo -u "$build_user" env HOME="$build_home" \
+    go env -w "GOPROXY=$GO_PROXY" "GOSUMDB=$GO_SUM_DB"
+  echo "Go 镜像配置已写入 $build_user："
+  sudo -u "$build_user" env HOME="$build_home" go env GOPROXY GOSUMDB
+}
+
 configure_quota_mount() {
   local mount_point filesystem_type mount_options backup tmp
   mount_point="$(findmnt -no TARGET --target "$STORAGE_ROOT")"
@@ -405,6 +415,7 @@ verify_deployment() {
 prepare_site_config
 validate_site_config_for_host
 install_build_dependencies
+configure_go_environment
 "$SCRIPT_DIR/apply_site_config.sh" --config "$SITE_CONFIG" --output-dir /etc/ssms
 
 echo "安装 Samba Storage Server。"

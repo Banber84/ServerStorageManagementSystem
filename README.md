@@ -91,6 +91,7 @@ go build -o bin/storage-agent ./agent
 ```bash
 ssmsctl --help
 ssmsctl system status
+ssmsctl user list
 sudo ssmsctl user create alice --quota-gb 10
 sudo ssmsctl quota set alice 20
 sudo ssmsctl node join NodeC 192.168.1.215 nodec1
@@ -110,10 +111,12 @@ sudo scripts/ssmsctl system bootstrap --host 192.168.1.230
 
 ## 常用文档
 
+- [文档总览](docs/README.md)：按设计、部署和测试报告分类导航。
 - [运行手册](docs/design/runbook.md)：后端、Agent、systemd、接口测试和故障排查。
 - [API 文档](docs/design/api.md)：REST API 路径、请求和响应。
 - [数据库设计](docs/design/database.md)：SQLite 表结构。
-- [部署文档索引](docs/deployment/README.md)：部署、联调、命令和测试报告入口。
+- [部署文档索引](docs/deployment/README.md)：功能说明、部署步骤、命令和验收方案。
+- [测试报告索引](docs/reports/README.md)：历史实测过程、问题和结论。
 - [Agent 说明](agent/README.md)：Agent 构建、安装和 systemd 配置。
 
 ## 项目结构
@@ -124,7 +127,8 @@ agent/       节点状态采集 Agent
 scripts/     安装、用户同步、配额、节点和 Gateway 脚本
 configs/     systemd、Samba、pam_mount 和站点配置模板
 docs/design/ 设计文档、API、数据库和运行手册
-docs/deployment/ 部署说明、命令参考和测试报告
+docs/deployment/ 功能说明、部署步骤、命令参考和验收方案
+docs/reports/ 已执行测试的过程、问题和结论
 ```
 
 ## 技术栈

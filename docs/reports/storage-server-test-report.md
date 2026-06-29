@@ -1,5 +1,7 @@
 # Storage Server 单机测试报告
 
+> 本文仅记录历史实测过程与结论。日常操作请查阅 `docs/deployment/`。
+
 ## 测试环境
 
 ```text

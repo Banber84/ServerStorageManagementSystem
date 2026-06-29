@@ -30,9 +30,11 @@ docs/deployment/winpc-ubuntu26.md
 
 | 文档 | 内容 |
 | --- | --- |
-| `docs/deployment/demo-test-report.md` | 第一版 Web 管理后台、REST API、Agent 上报测试 |
-| `docs/deployment/storage-server-test-report.md` | Storage Server 单机 Samba、quota、用户隔离测试 |
-| `docs/deployment/full-integration-test-report.md` | 三虚拟机完整联调、跨节点访问、用户同步与删除同步测试 |
+| [../reports/demo-test-report.md](../reports/demo-test-report.md) | 第一版 Web 管理后台、REST API、Agent 上报测试 |
+| [../reports/storage-server-test-report.md](../reports/storage-server-test-report.md) | Storage Server 单机 Samba、quota、用户隔离测试 |
+| [../reports/full-integration-test-report.md](../reports/full-integration-test-report.md) | 三虚拟机完整联调、跨节点访问、用户同步与删除同步测试 |
+| [../reports/nodec-integration-test-report.md](../reports/nodec-integration-test-report.md) | NodeC 接入、生命周期与 Gateway 测试 |
+| [../reports/bootstrap-storage-server-test-report.md](../reports/bootstrap-storage-server-test-report.md) | 全新 Storage Server 自动部署测试 |
 
 ## 最小验收流程
 
@@ -74,8 +76,8 @@ http://192.168.1.187:8080/logs
 sudo scripts/install_storage_server.sh
 sudo ssmsctl quota enable
 # 原脚本：sudo scripts/quota_manager.sh enable
-sudo scripts/create_user.sh alice --quota-gb 1
-sudo scripts/create_user.sh bob --quota-gb 1
+sudo ssmsctl user create alice --quota-gb 1
+sudo ssmsctl user create bob --quota-gb 1
 ```
 
 验证用户目录隔离：
